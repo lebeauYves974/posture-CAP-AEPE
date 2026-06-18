@@ -1,445 +1,453 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <meta name="theme-color" content="#2c3e50">
-  <title>Analyse Posturale - CAP AEPE</title>
+<!doctype html>
+<html lang="fr"><head><script src="/_sdk/telemetry_sdk.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Analyse Posturale</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&amp;display=swap" rel="stylesheet">
   <style>
-    :root { --prap-green: #2ecc71; --prap-red: #e74c3c; --prap-blue: #3498db; --prap-yellow: #f1c40f; }
-    html, body { min-height: 100%; margin: 0; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
-    body { font-family: 'Segoe UI', 'Helvetica Neue', system-ui, sans-serif; background: #121212; color: white; display: flex; flex-direction: column; align-items: center; user-select: none; -webkit-user-select: none; }
-    .header { padding: 18px 16px; text-align: center; background: #2c3e50; width: 100%; box-shadow: 0 4px 10px rgba(0,0,0,0.35); font-size: 1rem; }
-    .container { width: 100%; max-width: 640px; margin: 12px auto 0; display: flex; flex-direction: column; align-items: center; gap: 14px; }
-    .image-wrapper { position: relative; width: 100%; background: #111; border-radius: 18px; overflow: hidden; display: flex; justify-content: center; align-items: center; }
-    #output_canvas { width: 100%; height: auto; display: block; max-height: none; -webkit-backface-visibility: hidden; backface-visibility: hidden; }
-    .analysis-legend { width: 100%; position: absolute; bottom: 12px; left: 12px; display: flex; flex-wrap: wrap; gap: 8px; pointer-events: none; }
-    .legend-item { display: flex; align-items: center; gap: 6px; border-radius: 999px; padding: 6px 10px; background: rgba(0,0,0,0.65); color: #fff; font-size: 0.82rem; font-weight: 500; }
-    .legend-color { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
-    .controls { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 12px; background: #1a1a1a; padding: 18px 16px 22px; border-radius: 22px; }
-    .btn { background: var(--prap-blue); color: white; border: none; padding: 14px 18px; border-radius: 999px; font-size: 1rem; font-weight: 700; cursor: pointer; transition: transform 0.2s ease, background-color 0.2s ease; width: 100%; max-width: 320px; -webkit-tap-highlight-color: transparent; will-change: transform; }
-    .btn:hover:not(:disabled) { transform: translateY(-1px); background-color: #2980b9; }
-    .btn:focus { outline: 2px solid var(--prap-green); outline-offset: 2px; }
-    .btn:disabled { background: #555; cursor: default; opacity: 0.6; }
-    .file-input { display: none; }
-    .status { width: 100%; max-width: 640px; margin-top: 6px; padding: 14px 16px; border-radius: 16px; font-weight: 700; text-align: center; font-size: 0.98rem; }
-    .status.ready { background: rgba(52, 152, 219, 0.18); border: 2px solid var(--prap-blue); }
-    .status.alert { background: rgba(231, 76, 60, 0.18); border: 2px solid var(--prap-red); }
-    .status.valid { background: rgba(46, 204, 113, 0.18); border: 2px solid var(--prap-green); }
-    .analysis-panel { width: 100%; max-width: 640px; background: #161616; border-radius: 18px; padding: 18px 20px; margin-top: 6px; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.04); }
-    .analysis-panel h2 { margin: 0 0 12px; font-size: 1rem; font-weight: 700; }
-    .analysis-item { margin-bottom: 12px; line-height: 1.5; font-size: 0.95rem; }
-    .analysis-item strong { color: #fff; font-weight: 600; }
-    @media (max-width: 480px) {
-      .header { font-size: 0.95rem; }
-      .btn { font-size: 0.96rem; padding: 14px 16px; }
-      .analysis-panel { padding: 16px; }
-      .legend-item { font-size: 0.75rem; padding: 5px 8px; }
+    :root {
+      color-scheme: dark;
+      --bg: #0b1521;
+      --panel: rgba(16, 23, 38, 0.88);
+      --panel-strong: rgba(10, 15, 26, 0.96);
+      --accent: #38bdf8;
+      --accent-soft: rgba(56, 189, 248, 0.18);
+      --text: #f8fafc;
+      --muted: #cbd5e1;
+    }
+    html, body {
+      min-height: 100%;
+      margin: 0;
+      background: radial-gradient(circle at top left, rgba(56,189,248,0.12), transparent 24%),
+                  radial-gradient(circle at bottom right, rgba(99,102,241,0.14), transparent 18%),
+                  linear-gradient(180deg, #0c1220 0%, #09121d 45%, #07101a 100%);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body { overflow-x: hidden; }
+    .page-shell { width: 100%; min-height: 100vh; padding: 24px 18px 36px; }
+    .page-inner { width: 100%; max-width: 720px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+    .canva-header {
+      position: relative;
+      border-radius: 28px;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: linear-gradient(180deg, rgba(44,62,80,0.95), rgba(23,33,52,0.95));
+      box-shadow: 0 28px 80px rgba(0,0,0,0.35);
+    }
+    .canva-header::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at top left, rgba(56,189,248,0.28), transparent 35%);
+      pointer-events: none;
+    }
+    .canva-header > * { position: relative; z-index: 1; }
+    .canva-title { font-size: clamp(2.2rem, 4vw, 3rem); line-height: 1.05; }
+    .canva-subtitle { max-width: 720px; margin: 10px auto 0; opacity: 0.92; font-size: 1rem; }
+    .card {
+      background: var(--panel);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 28px;
+      box-shadow: 0 24px 80px rgba(0,0,0,0.28);
+      backdrop-filter: blur(18px);
+    }
+    .canvas-shell {
+      position: relative;
+      border-radius: 28px;
+      overflow: hidden;
+      border: 1px dashed rgba(255,255,255,0.12);
+      min-height: 340px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.01));
+    }
+    .canvas-placeholder {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: rgba(248,250,252,0.65);
+      font-size: 1rem;
+      text-align: center;
+      padding: 1rem;
+      pointer-events: none;
+    }
+    .controls { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+    .btn {
+      width: 100%;
+      max-width: 320px;
+      padding: 16px 22px;
+      border-radius: 999px;
+      border: none;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.24s ease, box-shadow 0.24s ease, background-color 0.24s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #38bdf8, #0ea5e9);
+      color: white;
+      box-shadow: 0 18px 38px rgba(56,189,248,0.24);
+    }
+    .btn-primary:hover:not(:disabled) { transform: translateY(-2px); }
+    .btn-secondary {
+      background: rgba(255,255,255,0.07);
+      color: #f8fafc;
+    }
+    .btn-secondary:hover:not(:disabled) { background: rgba(255,255,255,0.14); }
+    .btn:disabled { opacity: 0.6; cursor: default; transform: none; box-shadow: none; }
+    #status {
+      width: 100%;
+      max-width: 320px;
+      border-radius: 24px;
+      padding: 16px 18px;
+      text-align: center;
+      font-weight: 700;
+      background: rgba(52,152,219,0.16);
+      border: 1px solid rgba(52,152,219,0.28);
+    }
+    .analysis-panel { padding: 22px; }
+    .analysis-panel h2 { font-size: 1.1rem; margin-bottom: 16px; }
+    .analysis-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+    .metric-card {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 20px;
+      padding: 14px;
+      min-height: 92px;
+    }
+    .metric-card strong { display: block; margin-bottom: 8px; color: #fff; }
+    .correction-card {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 18px;
+      padding: 14px;
+    }
+    .correction-card + .correction-card { margin-top: 12px; }
+    @media (max-width: 640px) {
+      .analysis-grid { grid-template-columns: 1fr; }
+      .page-shell { padding: 18px 12px 28px; }
     }
   </style>
-</head>
-<body>
-  <div class="header">
-    <strong>ALM & PRAP Petite Enfance</strong><br>Analyse posturale par photo
-  </div>
-  <div class="container">
-    <div class="image-wrapper">
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-core@4.17.0/dist/tf-core.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-converter@4.17.0/dist/tf-converter.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-cpu@4.17.0/dist/tf-backend-cpu.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-webgl@4.17.0/dist/tf-backend-webgl.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection@2.1.3/dist/pose-detection.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js" type="text/javascript"></script>
+  <script src="/_sdk/data_sdk.js" type="text/javascript"></script>
+  <script src="/_sdk/resizing_sdk.js" type="text/javascript"></script>
+ </head>
+ <body class="page-shell">
+  <div class="page-inner">
+    <header class="canva-header p-8 text-center">
+      <h1 class="canva-title canva-text font-bold" style="color: rgb(255, 255, 255); font-weight: 700;">Analyse Posturale IA</h1>
+      <p class="canva-subtitle canva-text mt-4" style="color: rgba(255, 255, 255, 0.88);">Identifie automatiquement le soignant parmi plusieurs personnes et affiche les angles clés pour améliorer la posture.</p>
+    </header>
+
+    <div class="canvas-shell card">
       <canvas id="output_canvas"></canvas>
-      <div class="analysis-legend">
-        <div class="legend-item"><span class="legend-color" style="background:#f1c40f"></span>Épaules / bassin</div>
-        <div class="legend-item"><span class="legend-color" style="background:#2ecc71"></span>Bras</div>
-        <div class="legend-item"><span class="legend-color" style="background:#3498db"></span>Jambes</div>
-        <div class="legend-item"><span class="legend-color" style="background:#e74c3c"></span>Zone d'alerte</div>
+      <div class="canvas-placeholder">Importez une photo pour lancer l'analyse posturale. Le soignant sera détecté automatiquement.</div>
+    </div>
+
+    <div class="card controls">
+      <input id="fileInput" type="file" accept="image/*" class="hidden">
+      <button id="selectPhoto" class="btn btn-primary" disabled>📷 Importer une photo</button>
+      <button id="resetPhoto" class="btn btn-secondary" disabled>⟳ Recommencer</button>
+      <div id="status">Chargement de l'IA…</div>
+    </div>
+
+    <section id="analysisPanel" class="card analysis-panel hidden">
+      <h2>Angles articulaires - Soignant détecté</h2>
+      <div id="analysisContent" class="analysis-grid"></div>
+      <div id="correctionsPanel" class="mt-4">
+        <h3 style="color: #fbbf24; font-weight:700; margin-bottom:12px;">Recommandations d'amélioration</h3>
+        <div id="correctionsList"></div>
       </div>
-    </div>
-    <div class="controls">
-      <input id="fileInput" class="file-input" type="file" accept="image/*">
-      <button id="selectPhoto" class="btn" disabled>Importer une photo depuis la galerie</button>
-      <button id="resetPhoto" class="btn" disabled>RECOMMENCER</button>
-      <div id="status" class="status">Chargement de l'IA...</div>
-      <div id="debugPanel" style="margin-top:10px;padding:10px;border-radius:10px;background:rgba(0,0,0,0.6);font-size:0.85rem;display:none;color:#fff;max-width:640px;">
-        <div><strong>Debug:</strong></div>
-        <div id="debugCounts">Segments: 0 · Angles: 0 · Points: 0 · Erreurs: 0</div>
-        <div id="debugErrors" style="margin-top:6px;white-space:pre-wrap;max-height:120px;overflow:auto;font-size:0.82rem;color:#ffcccc"></div>
-          <div id="debugDetails" style="margin-top:8px;font-size:0.82rem;color:#ccffcc;max-height:140px;overflow:auto;white-space:pre-wrap"></div>
-      </div>
-    </div>
-    <div id="analysisPanel" class="analysis-panel" hidden>
-      <h2>Résultats de l'analyse</h2>
-      <div id="analysisSegments"></div>
-    </div>
+    </section>
   </div>
+  <script src="/_sdk/editing_sdk.js"></script>
+  <script>
+    const canvas = document.getElementById('output_canvas');
+    const ctx = canvas.getContext('2d');
+    const statusDiv = document.getElementById('status');
+    const fileInput = document.getElementById('fileInput');
+    const selectBtn = document.getElementById('selectPhoto');
+    const resetBtn = document.getElementById('resetPhoto');
+    const analysisPanel = document.getElementById('analysisPanel');
+    const analysisContent = document.getElementById('analysisContent');
+    const correctionsList = document.getElementById('correctionsList');
 
-  <script type="module">
-    import { PoseLandmarker, FilesetResolver, DrawingUtils } from "https://cdn.skypack.dev/@mediapipe/tasks-vision@0.10.0";
+    let detector = null;
+    let cW = 0, cH = 0;
 
-    const canvas = document.getElementById("output_canvas");
-    const ctx = canvas.getContext("2d");
-    const statusDiv = document.getElementById("status");
-    const fileInput = document.getElementById("fileInput");
-    const selectPhotoButton = document.getElementById("selectPhoto");
-    const resetPhotoButton = document.getElementById("resetPhoto");
-    const analysisPanel = document.getElementById("analysisPanel");
-    const analysisSegments = document.getElementById("analysisSegments");
+    function showStatus(text, type) {
+      statusDiv.textContent = text;
+      statusDiv.className = 'canva-text w-full text-center font-bold py-3 px-4 rounded-2xl border-2';
+      if (type === 'error') statusDiv.classList.add('border-[#e74c3c]', 'bg-[rgba(231,76,60,0.18)]');
+      else if (type === 'success') statusDiv.classList.add('border-[#2ecc71]', 'bg-[rgba(46,204,113,0.18)]');
+      else statusDiv.classList.add('border-[#3498db]', 'bg-[rgba(52,152,219,0.18)]');
+    }
 
-    let poseLandmarker = null;
-    let currentBitmap = null;
-    const drawingUtils = new DrawingUtils(ctx);
+    function resizeCanvas(w, h) {
+      const wrapper = canvas.parentElement;
+      const dispW = wrapper.clientWidth;
+      const dispH = Math.round(dispW * (h / w));
+      canvas.style.width = dispW + 'px';
+      canvas.style.height = dispH + 'px';
+      canvas.width = dispW;
+      canvas.height = dispH;
+      cW = canvas.width; cH = canvas.height;
+    }
 
-    // Debug counters and UI
-    const debugPanel = document.getElementById('debugPanel');
-    const debugCountsNode = document.getElementById('debugCounts');
-    const debugErrorsNode = document.getElementById('debugErrors');
-    const debugDetailsNode = document.getElementById('debugDetails');
-    const debugCounts = { segments: 0, angles: 0, points: 0, errors: [], last: [] };
-    const updateDebug = () => {
-      if (!debugPanel) return;
-      debugPanel.style.display = 'block';
-      debugCountsNode.innerText = `Segments: ${debugCounts.segments} · Angles: ${debugCounts.angles} · Points: ${debugCounts.points} · Erreurs: ${debugCounts.errors.length}`;
-      debugErrorsNode.innerText = debugCounts.errors.slice(-10).join('\n');
-      if (debugDetailsNode) {
-        debugDetailsNode.innerText = debugCounts.last.slice(-12).join('\n');
-      }
-    };
-    window.addEventListener('error', (e) => {
-      debugCounts.errors.push(e.message || String(e));
-      updateDebug();
-    });
+    function isValid(p) { return p && p.score > 0.3; }
 
-    const showStatus = (text, status = "ready") => {
-      statusDiv.innerText = text;
-      statusDiv.className = `status ${status}`;
-    };
+    function drawLine(a, b, color, width) {
+      if (!isValid(a) || !isValid(b)) return;
+      ctx.strokeStyle = color; ctx.lineWidth = width; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+    }
 
-    let canvasCssWidth = 0, canvasCssHeight = 0;
-    const resizeCanvas = (width, height) => {
-      // Fit the canvas to the image-wrapper container while preserving aspect ratio
-      const wrapper = document.querySelector('.image-wrapper');
-      const containerW = (wrapper && wrapper.clientWidth) || width;
-      const displayWidth = Math.min(width, containerW);
-      const displayHeight = Math.round(displayWidth * (height / width));
-      canvasCssWidth = Math.round(displayWidth);
-      canvasCssHeight = Math.round(displayHeight);
-      const dpr = window.devicePixelRatio || 1;
-      canvas.style.width = canvasCssWidth + 'px';
-      canvas.style.height = canvasCssHeight + 'px';
-      canvas.width = Math.round(canvasCssWidth * dpr);
-      canvas.height = Math.round(canvasCssHeight * dpr);
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    };
+    function drawPoint(p, radius) {
+      if (!isValid(p)) return;
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath(); ctx.arc(p.x, p.y, radius, 0, Math.PI * 2); ctx.fill();
+    }
 
-    const drawLabel = (point, text, color) => {
-      ctx.font = "bold 20px 'Segoe UI', system-ui, sans-serif";
-      ctx.textBaseline = "middle";
-      ctx.textAlign = "center";
-      ctx.lineWidth = 6;
-      ctx.strokeStyle = "rgba(0,0,0,0.8)";
-      ctx.fillStyle = color;
-      ctx.strokeText(text, point.x, point.y);
-      ctx.fillText(text, point.x, point.y);
-    };
-
-    const computeAngle = (a, b, c) => {
+    function computeAngle(a, b, c) {
+      if (!isValid(a) || !isValid(b) || !isValid(c)) return null;
       const ab = { x: a.x - b.x, y: a.y - b.y };
       const cb = { x: c.x - b.x, y: c.y - b.y };
       const dot = ab.x * cb.x + ab.y * cb.y;
       const mag = Math.hypot(ab.x, ab.y) * Math.hypot(cb.x, cb.y);
-      if (mag === 0) return 0;
-      return Math.acos(Math.max(-1, Math.min(1, dot / mag))) * (180 / Math.PI);
-    };
+      if (mag === 0) return null;
+      return Math.round(Math.acos(Math.max(-1, Math.min(1, dot / mag))) * (180 / Math.PI));
+    }
 
-    const drawSegment = (a, b, color, width = 5) => {
-      try {
-        if (!isValidPoint(a) || !isValidPoint(b)) return;
-        ctx.strokeStyle = color;
-        ctx.lineWidth = width;
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
-        ctx.shadowColor = color;
-        ctx.shadowBlur = 14;
-        ctx.beginPath();
-        ctx.moveTo(a.x, a.y);
-        ctx.lineTo(b.x, b.y);
-        ctx.stroke();
-        ctx.shadowBlur = 0;
-        debugCounts.segments += 1;
-        try { debugCounts.last.push(`Segment: ${a.x.toFixed(1)},${a.y.toFixed(1)} -> ${b.x.toFixed(1)},${b.y.toFixed(1)} (${color})`); } catch(e){}
-        updateDebug();
-      } catch (err) {
-        console.error('drawSegment error', err);
-        debugCounts.errors.push(String(err));
-        updateDebug();
-      }
-    };
+    function drawAngle(a, b, c, color) {
+      const angle = computeAngle(a, b, c);
+      if (angle === null) return null;
+      const ab = { x: a.x - b.x, y: a.y - b.y };
+      const cb = { x: c.x - b.x, y: c.y - b.y };
+      const start = Math.atan2(ab.y, ab.x);
+      const end = Math.atan2(cb.y, cb.x);
+      let diff = end - start;
+      while (diff <= -Math.PI) diff += 2 * Math.PI;
+      while (diff > Math.PI) diff -= 2 * Math.PI;
+      const r = 30;
+      ctx.strokeStyle = color; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(b.x, b.y, r, start, start + diff, diff < 0); ctx.stroke();
+      const mid = start + diff / 2;
+      const lx = b.x + Math.cos(mid) * (r + 16);
+      const ly = b.y + Math.sin(mid) * (r + 16);
+      ctx.font = 'bold 14px DM Sans'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.strokeStyle = '#000'; ctx.lineWidth = 4; ctx.strokeText(angle + '°', lx, ly);
+      ctx.fillStyle = color; ctx.fillText(angle + '°', lx, ly);
+      return angle;
+    }
 
-    const isValidPoint = (p) => p && Number.isFinite(p.x) && Number.isFinite(p.y);
+    const CONNECTIONS = [[5,6],[5,7],[7,9],[6,8],[8,10],[5,11],[6,12],[11,12],[11,13],[13,15],[12,14],[14,16]];
 
-    const drawAngleMarker = (a, b, c, color, label) => {
-      try {
-        if (!isValidPoint(a) || !isValidPoint(b) || !isValidPoint(c)) return;
-        const ab = { x: a.x - b.x, y: a.y - b.y };
-        const cb = { x: c.x - b.x, y: c.y - b.y };
-        const start = Math.atan2(ab.y, ab.x);
-        const end = Math.atan2(cb.y, cb.x);
-        let diff = end - start;
-        while (diff <= -Math.PI) diff += 2 * Math.PI;
-        while (diff > Math.PI) diff -= 2 * Math.PI;
-        const radius = Math.min(65, (Math.hypot(ab.x, ab.y) + Math.hypot(cb.x, cb.y)) * 0.25);
-        ctx.fillStyle = `rgba(255, 0, 0, 0.32)`;
-        ctx.beginPath();
-        ctx.moveTo(b.x, b.y);
-        ctx.arc(b.x, b.y, radius, start, start + diff, diff < 0);
-        ctx.lineTo(b.x, b.y);
-        ctx.fill();
-        ctx.strokeStyle = color;
-        ctx.lineWidth = 10;
-        ctx.lineCap = "round";
-        ctx.lineJoin = "round";
-        ctx.beginPath();
-        ctx.shadowColor = color;
-        ctx.shadowBlur = 14;
-        ctx.arc(b.x, b.y, radius, start, start + diff, diff < 0);
-        ctx.stroke();
-        ctx.shadowBlur = 0;
-        debugCounts.angles += 1;
-        try { debugCounts.last.push(`Angle@${b.x.toFixed(1)},${b.y.toFixed(1)} r=${radius.toFixed(1)} ${label||''}`); } catch(e){}
-        updateDebug();
-        if (label) {
-          const midAngle = start + diff / 2;
-          const labelX = b.x + Math.cos(midAngle) * (radius + 22);
-          const labelY = b.y + Math.sin(midAngle) * (radius + 22);
-          drawLabel({ x: labelX, y: labelY }, label, color);
-        }
-      } catch (err) {
-        console.error('drawAngleMarker error', err);
-        debugCounts.errors.push(String(err));
-        updateDebug();
-      }
-    };
-
-    const computeSlope = (a, b) => {
-      return Math.abs((a.y - b.y) / (a.x - b.x || 0.0001));
-    };
-
-    const initializePoseLandmarker = async () => {
-      try {
-        const vision = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/wasm");
-        poseLandmarker = await PoseLandmarker.createFromOptions(vision, {
-          baseOptions: {
-            modelAssetPath: "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_heavy/float16/1/pose_landmarker_heavy.task",
-            delegate: "GPU"
-          },
-          runningMode: "IMAGE",
-          numPoses: 1,
-          minPoseDetectionConfidence: 0.5,
-          minPosePresenceConfidence: 0.5,
-          minTrackingConfidence: 0.5
+    function generateCorrections(angles) {
+      const corrections = [];
+      if (angles.coudeG !== null && (angles.coudeG < 80 || angles.coudeG > 110)) {
+        corrections.push({ 
+          severity: 'text-red-300', 
+          title: `⚠️ Coude gauche : ${angles.coudeG}°`,
+          text: `<strong>Problème biomécanique :</strong> Un coude trop tendu (>110°) surcharge l'articulation et réduit la force; trop plié (<80°) augmente la fatigue musculaire.<br><strong>Conséquences :</strong> Risque de tendinite et de compensation au niveau de l'épaule.<br><strong>Exercices de correction :</strong><br>• Flexion-extension du coude : 15 rép × 3 séries<br>• Étirements triceps : 30 sec × 2 côtés<br>• Renforcement isométrique : maintenir 90° pendant 10 sec` 
         });
-        showStatus("✅ IA prête. Importez une photo depuis votre galerie.", "ready");
-        selectPhotoButton.disabled = false;
-      } catch (error) {
-        showStatus("❌ Erreur de chargement de l'IA. Vérifiez votre connexion.", "alert");
-        console.error(error);
       }
-    };
-
-    const analyzeImage = async (imageBitmap) => {
-      if (!poseLandmarker) return;
-      showStatus("⏳ Photo envoyée à l'IA pour analyse...", "ready");
-
-      let processedBitmap = imageBitmap;
-      if (imageBitmap.width < 800 || imageBitmap.height < 600) {
-        const scale = Math.max(800 / imageBitmap.width, 600 / imageBitmap.height);
-        const newWidth = Math.round(imageBitmap.width * scale);
-        const newHeight = Math.round(imageBitmap.height * scale);
-        const tempCanvas = document.createElement('canvas');
-        tempCanvas.width = newWidth;
-        tempCanvas.height = newHeight;
-        const tempCtx = tempCanvas.getContext('2d');
-        tempCtx.drawImage(imageBitmap, 0, 0, newWidth, newHeight);
-        processedBitmap = await createImageBitmap(tempCanvas);
-      }
-
-      const results = poseLandmarker.detect(processedBitmap);
-      resizeCanvas(processedBitmap.width, processedBitmap.height);
-      ctx.clearRect(0, 0, canvasCssWidth, canvasCssHeight);
-      ctx.drawImage(processedBitmap, 0, 0, canvasCssWidth, canvasCssHeight);
-
-      if (!results?.landmarks?.length) {
-        showStatus("⚠️ Aucune posture reconnue. Essayez une autre photo.", "alert");
-        analysisSegments.innerHTML = `<div class='analysis-item'>Aucun segment corporel détecté.</div>`;
-        analysisPanel.hidden = false;
-        resetPhotoButton.disabled = false;
-        return;
-      }
-
-      const landmarks = results.landmarks[0];
-      // Dump full set of landmarks (normalized + pixel) for debugging
-      try {
-        debugCounts.last.push(`--- full landmarks dump (${landmarks.length}) ---`);
-        landmarks.forEach((p, i) => {
-          if (!p) return;
-          const nativePx = (p.x * processedBitmap.width).toFixed(1);
-          const nativePy = (p.y * processedBitmap.height).toFixed(1);
-          const dispPx = (p.x * canvasCssWidth).toFixed(1);
-          const dispPy = (p.y * canvasCssHeight).toFixed(1);
-          debugCounts.last.push(`L${i}: norm(${p.x.toFixed(4)},${p.y.toFixed(4)}) → native(${nativePx},${nativePy}) display(${dispPx},${dispPy})`);
+      if (angles.coudeD !== null && (angles.coudeD < 80 || angles.coudeD > 110)) {
+        corrections.push({ 
+          severity: 'text-red-300', 
+          title: `⚠️ Coude droit : ${angles.coudeD}°`,
+          text: `<strong>Problème biomécanique :</strong> Un coude trop tendu (>110°) surcharge l'articulation et réduit la force; trop plié (<80°) augmente la fatigue musculaire.<br><strong>Conséquences :</strong> Risque de tendinite et de compensation au niveau de l'épaule.<br><strong>Exercices de correction :</strong><br>• Flexion-extension du coude : 15 rép × 3 séries<br>• Étirements triceps : 30 sec × 2 côtés<br>• Renforcement isométrique : maintenir 90° pendant 10 sec` 
         });
-        // Keep debug history bounded
-        if (debugCounts.last.length > 400) debugCounts.last = debugCounts.last.slice(-200);
-        updateDebug();
-      } catch (e) {
-        debugCounts.errors.push(String(e));
-        updateDebug();
       }
-      const scaleX = canvasCssWidth || processedBitmap.width;
-      const scaleY = canvasCssHeight || processedBitmap.height;
-      const point = (index) => {
-        const p = landmarks[index];
-        return p ? { x: p.x * scaleX, y: p.y * scaleY } : { x: 0, y: 0 };
-      };
-      const leftShoulder = point(11);
-      const rightShoulder = point(12);
-      const leftElbow = point(13);
-      const rightElbow = point(14);
-      const leftWrist = point(15);
-      const rightWrist = point(16);
-      const leftHip = point(23);
-      const rightHip = point(24);
-      const leftKnee = point(25);
-      const rightKnee = point(26);
-      const leftAnkle = point(27);
-      const rightAnkle = point(28);
-      const nose = point(0);
-      const leftEye = point(1);
-      const rightEye = point(2);
-      const leftEar = point(3);
-      const rightEar = point(4);
+      if (angles.epauleG !== null && (angles.epauleG < 40 || angles.epauleG > 75)) {
+        corrections.push({ 
+          severity: 'text-orange-300', 
+          title: `🔶 Épaule gauche : ${angles.epauleG}°`,
+          text: `<strong>Problème biomécanique :</strong> L'épaule doit rester 45-75° pour optimiser la mécanique du membre supérieur. Au-delà, la charge comprime l'articulation de la coiffe des rotateurs.<br><strong>Conséquences :</strong> Tendinite de la coiffe, syndrome d'impingement.<br><strong>Exercices de correction :</strong><br>• Rotation d'épaule avec bras fléchi : 20 rép × 3 séries<br>• Étirement pectoral : 45 sec × 2 côtés<br>• Renforcement de la coiffe (bande élastique) : 12 rép × 3 séries` 
+        });
+      }
+      if (angles.epauleD !== null && (angles.epauleD < 40 || angles.epauleD > 75)) {
+        corrections.push({ 
+          severity: 'text-orange-300', 
+          title: `🔶 Épaule droite : ${angles.epauleD}°`,
+          text: `<strong>Problème biomécanique :</strong> L'épaule doit rester 45-75° pour optimiser la mécanique du membre supérieur. Au-delà, la charge comprime l'articulation de la coiffe des rotateurs.<br><strong>Conséquences :</strong> Tendinite de la coiffe, syndrome d'impingement.<br><strong>Exercices de correction :</strong><br>• Rotation d'épaule avec bras fléchi : 20 rép × 3 séries<br>• Étirement pectoral : 45 sec × 2 côtés<br>• Renforcement de la coiffe (bande élastique) : 12 rép × 3 séries` 
+        });
+      }
+      if (angles.hancheG !== null && (angles.hancheG < 40 || angles.hancheG > 85)) {
+        corrections.push({ 
+          severity: 'text-orange-300', 
+          title: `🔶 Hanche gauche : ${angles.hancheG}°`,
+          text: `<strong>Problème biomécanique :</strong> La flexion de hanche doit être 45-85° pour assurer une montée stable de la charge. Hors de cette zone, la colonne lombal et le bassin perdent leur alignement.<br><strong>Conséquences :</strong> Surcharge lombaire, risque de hernies discales.<br><strong>Exercices de correction :</strong><br>• Flexion hanche assis : 15 rép × 3 séries<br>• Fente avant : 12 rép × 3 séries par côté<br>• Gainage lombaire : 20-30 sec × 3 séries` 
+        });
+      }
+      if (angles.hancheD !== null && (angles.hancheD < 40 || angles.hancheD > 85)) {
+        corrections.push({ 
+          severity: 'text-orange-300', 
+          title: `🔶 Hanche droite : ${angles.hancheD}°`,
+          text: `<strong>Problème biomécanique :</strong> La flexion de hanche doit être 45-85° pour assurer une montée stable de la charge. Hors de cette zone, la colonne lombal et le bassin perdent leur alignement.<br><strong>Conséquences :</strong> Surcharge lombaire, risque de hernies discales.<br><strong>Exercices de correction :</strong><br>• Flexion hanche assis : 15 rép × 3 séries<br>• Fente avant : 12 rép × 3 séries par côté<br>• Gainage lombaire : 20-30 sec × 3 séries` 
+        });
+      }
+      if (angles.genouG !== null && (angles.genouG < 60 || angles.genouG > 110)) {
+        corrections.push({ 
+          severity: 'text-yellow-300', 
+          title: `⚡ Genou gauche : ${angles.genouG}°`,
+          text: `<strong>Problème biomécanique :</strong> Le genou doit rester 60-110° pour distribuer les forces de façon équitable entre le quadriceps et les ischio-jambiers. Une flexion insuffisante (<60°) hyper-étend l'articulation; excessive (>110°) augmente la compression.<br><strong>Conséquences :</strong> Douleur patellaire, gonarthrose accélérée.<br><strong>Exercices de correction :</strong><br>• Flexion-extension genou assis : 15 rép × 3 séries<br>• Squat partiel : 12 rép × 3 séries<br>• Renforcement quadriceps (isométrique) : 10 sec × 3 séries` 
+        });
+      }
+      if (angles.genouD !== null && (angles.genouD < 60 || angles.genouD > 110)) {
+        corrections.push({ 
+          severity: 'text-yellow-300', 
+          title: `⚡ Genou droit : ${angles.genouD}°`,
+          text: `<strong>Problème biomécanique :</strong> Le genou doit rester 60-110° pour distribuer les forces de façon équitable entre le quadriceps et les ischio-jambiers. Une flexion insuffisante (<60°) hyper-étend l'articulation; excessive (>110°) augmente la compression.<br><strong>Conséquences :</strong> Douleur patellaire, gonarthrose accélérée.<br><strong>Exercices de correction :</strong><br>• Flexion-extension genou assis : 15 rép × 3 séries<br>• Squat partiel : 12 rép × 3 séries<br>• Renforcement quadriceps (isométrique) : 10 sec × 3 séries` 
+        });
+      }
+      if (corrections.length === 0) {
+        corrections.push({ 
+          severity: 'text-green-300', 
+          title: '✅ Posture optimale',
+          text: 'Tous les angles respectent les recommandations ergonomiques. Continuez à maintenir cette technique sécurisée !' 
+        });
+      }
+      return corrections;
+    }
 
-      const shoulderCenter = { x: (leftShoulder.x + rightShoulder.x) / 2, y: (leftShoulder.y + rightShoulder.y) / 2 };
-      const hipCenter = { x: (leftHip.x + rightHip.x) / 2, y: (leftHip.y + rightHip.y) / 2 };
-      const headCenter = { x: (leftEye.x + rightEye.x + nose.x) / 3, y: (leftEye.y + rightEye.y + nose.y) / 3 };
+    function getAverageHipHeight(pts) {
+      const lHip = pts[11];
+      const rHip = pts[12];
+      if (!isValid(lHip) || !isValid(rHip)) return Infinity;
+      return (lHip.y + rHip.y) / 2;
+    }
 
-      const leftKneeAngle = computeAngle(leftHip, leftKnee, leftAnkle);
-      const rightKneeAngle = computeAngle(rightHip, rightKnee, rightAnkle);
-      const leftElbowAngle = computeAngle(leftShoulder, leftElbow, leftWrist);
-      const rightElbowAngle = computeAngle(rightShoulder, rightElbow, rightWrist);
-      const trunkAngle = computeAngle(shoulderCenter, hipCenter, leftKnee);
-      const shoulderAlignment = Math.abs(leftShoulder.y - rightShoulder.y);
-      const hipAlignment = Math.abs(leftHip.y - rightHip.y);
-      const spineOffset = Math.abs(shoulderCenter.x - hipCenter.x);
-      const headTilt = Math.abs(leftEye.y - rightEye.y);
+    async function analyze(bitmap) {
+      if (!detector) { showStatus('❌ IA non chargée.', 'error'); return; }
+      showStatus('⏳ Analyse en cours…', 'info');
+      selectBtn.disabled = true;
 
-      ctx.clearRect(0, 0, canvasCssWidth, canvasCssHeight);
-      ctx.drawImage(processedBitmap, 0, 0, canvasCssWidth, canvasCssHeight);
-      
-      const segmentColor = "#39FF14"; /* neon green */
-      const segmentWidth = 12;
-      drawSegment(leftShoulder, rightShoulder, segmentColor, segmentWidth);
-      drawSegment(leftHip, rightHip, segmentColor, segmentWidth);
-      drawSegment(leftShoulder, leftElbow, segmentColor, segmentWidth);
-      drawSegment(leftElbow, leftWrist, segmentColor, segmentWidth);
-      drawSegment(rightShoulder, rightElbow, segmentColor, segmentWidth);
-      drawSegment(rightElbow, rightWrist, segmentColor, segmentWidth);
-      drawSegment(leftHip, leftKnee, segmentColor, segmentWidth);
-      drawSegment(leftKnee, leftAnkle, segmentColor, segmentWidth);
-      drawSegment(rightHip, rightKnee, segmentColor, segmentWidth);
-      drawSegment(rightKnee, rightAnkle, segmentColor, segmentWidth);
-      drawSegment(shoulderCenter, hipCenter, segmentColor, segmentWidth);
-      drawSegment(headCenter, shoulderCenter, segmentColor, segmentWidth);
+      try {
+        resizeCanvas(bitmap.width, bitmap.height);
+        ctx.clearRect(0, 0, cW, cH);
+        ctx.drawImage(bitmap, 0, 0, cW, cH);
 
-      ctx.fillStyle = "#ffffff";
-      [leftShoulder, rightShoulder, leftElbow, rightElbow, leftWrist, rightWrist, leftHip, rightHip, leftKnee, rightKnee, leftAnkle, rightAnkle, nose, leftEye, rightEye].forEach(pt => {
-        if (isValidPoint(pt)) {
-          ctx.beginPath();
-          ctx.arc(pt.x, pt.y, 10, 0, Math.PI * 2);
-          ctx.fill();
-          debugCounts.points += 1;
-          updateDebug();
+        const poses = await detector.estimatePoses(canvas);
+
+        if (!poses || !poses.length) {
+          showStatus('⚠️ Aucune posture détectée.', 'error');
+          analysisPanel.classList.add('hidden');
+          selectBtn.disabled = false; resetBtn.disabled = false;
+          return;
         }
-      });
 
-      drawAngleMarker(leftHip, leftKnee, leftAnkle, "#FF0000", `${Math.round(leftKneeAngle)}°`);
-      drawAngleMarker(rightHip, rightKnee, rightAnkle, "#FF0000", `${Math.round(rightKneeAngle)}°`);
-      drawAngleMarker(leftShoulder, leftElbow, leftWrist, "#FF0000", `${Math.round(leftElbowAngle)}°`);
-      drawAngleMarker(rightShoulder, rightElbow, rightWrist, "#FF0000", `${Math.round(rightElbowAngle)}°`);
-      drawAngleMarker(shoulderCenter, hipCenter, leftKnee, "#FF0000", `${Math.round(trunkAngle)}°`);
-      drawAngleMarker(leftShoulder, shoulderCenter, rightShoulder, "#FF0000", "Épaules");
+        let selectedPose = poses[0];
+        if (poses.length >= 2) {
+          let minHipHeight = Infinity;
+          let caregiverIdx = 0;
 
-      const postureNotes = [];
-      const summary = [];
-      if (shoulderAlignment > 0.06) {
-        postureNotes.push("Épaules désalignées : inclinaison possible du buste.");
-      } else {
-        summary.push("Épaules alignées.");
-      }
-      if (hipAlignment > 0.08) {
-        postureNotes.push("Hanches déséquilibrées : attention à la rotation du bassin.");
-      } else {
-        summary.push("Hanches équilibrées.");
-      }
-      if (spineOffset > 0.18) {
-        postureNotes.push("Le dos est incliné latéralement. Vérifiez l'alignement de la colonne.");
-      } else {
-        summary.push("Colonne plutôt droite.");
-      }
-      if (leftKneeAngle < 90 || rightKneeAngle < 90) {
-        postureNotes.push("Genoux très fléchis : attention à la stabilité.");
-      } else if (leftKneeAngle > 170 || rightKneeAngle > 170) {
-        postureNotes.push("Genoux presque tendus : pliez un peu pour protéger le dos.");
-      } else {
-        summary.push("Genoux bien positionnés.");
-      }
-      if (leftElbowAngle < 140 || rightElbowAngle < 140) {
-        postureNotes.push("Bras fléchis : vérifiez la hauteur des avant-bras.");
-      } else {
-        summary.push("Bras bien étendus.");
-      }
-      if (headTilt > 0.04) {
-        postureNotes.push("Tête inclinée : regardez droit devant pour mieux aligner le cou.");
-      } else {
-        summary.push("Tête bien alignée.");
-      }
-      if (!postureNotes.length) {
-        postureNotes.push("Posture stable détectée : dos, hanches et genoux bien alignés.");
-      }
+          for (let i = 0; i < poses.length; i++) {
+            const pts = poses[i].keypoints.map(k => ({ x: k.x, y: k.y, score: k.score }));
+            const hipHeight = getAverageHipHeight(pts);
+            if (hipHeight < minHipHeight) {
+              minHipHeight = hipHeight;
+              caregiverIdx = i;
+            }
+          }
+          selectedPose = poses[caregiverIdx];
+          showStatus('⏳ ' + poses.length + ' personnes détectées. Analyse du soignant (celui qui soulève)…', 'info');
+        }
 
-      analysisSegments.innerHTML = `
-        <div class='analysis-item'><strong>Angle des genoux :</strong> gauche ${Math.round(leftKneeAngle)}° / droite ${Math.round(rightKneeAngle)}°</div>
-        <div class='analysis-item'><strong>Angle des coudes :</strong> gauche ${Math.round(leftElbowAngle)}° / droite ${Math.round(rightElbowAngle)}°</div>
-        <div class='analysis-item'><strong>Inclinaison du tronc :</strong> ${Math.round(trunkAngle)}°</div>
-        <div class='analysis-item'><strong>Alignement épaules :</strong> ${shoulderAlignment > 0.06 ? "désalignées" : "alignées"}</div>
-        <div class='analysis-item'><strong>Alignement hanches :</strong> ${hipAlignment > 0.08 ? "déséquilibrées" : "équilibrées"}</div>
-        <div class='analysis-item'><strong>Tête :</strong> ${headTilt > 0.04 ? "inclinée" : "droite"}</div>
-        <div class='analysis-item'><strong>Recommandations :</strong> ${postureNotes.join(" ")}</div>
-        <div class='analysis-item'><strong>Points positifs :</strong> ${summary.join(" ")}</div>
-      `;
-      analysisPanel.hidden = false;
-      showStatus("✅ Analyse enrichie terminée : segments clés et recommandations affichés.", "valid");
-      resetPhotoButton.disabled = false;
-    };
+        ctx.clearRect(0, 0, cW, cH);
+        ctx.drawImage(bitmap, 0, 0, cW, cH);
 
-    const handleFileSelect = async (event) => {
-      const file = event.target.files?.[0];
-      if (!file) return;
-      currentBitmap = await createImageBitmap(file);
-      await analyzeImage(currentBitmap);
-    };
+        const kp = selectedPose.keypoints;
+        const pts = kp.map(k => ({ x: k.x, y: k.y, score: k.score }));
 
-    selectPhotoButton.addEventListener("click", () => fileInput.click());
-    fileInput.addEventListener("change", handleFileSelect);
+        for (const [a, b] of CONNECTIONS) drawLine(pts[a], pts[b], '#00ff00', 4);
 
-    resetPhotoButton.addEventListener("click", () => {
-      ctx.clearRect(0, 0, canvasCssWidth || canvas.width, canvasCssHeight || canvas.height);
-      analysisPanel.hidden = true;
-      analysisSegments.innerHTML = "";
-      fileInput.value = "";
-      currentBitmap = null;
-      resetPhotoButton.disabled = true;
-      showStatus("✅ Importez une photo pour lancer l'analyse.", "ready");
+        const sC = (isValid(pts[5]) && isValid(pts[6])) ? { x: (pts[5].x + pts[6].x) / 2, y: (pts[5].y + pts[6].y) / 2, score: 1 } : { score: 0 };
+        const hC = (isValid(pts[11]) && isValid(pts[12])) ? { x: (pts[11].x + pts[12].x) / 2, y: (pts[11].y + pts[12].y) / 2, score: 1 } : { score: 0 };
+        drawLine(sC, hC, '#00ff00', 4);
+        drawLine(pts[0], sC, '#00ff00', 4);
+
+        const keyIdx = [0, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
+        for (const i of keyIdx) drawPoint(pts[i], 6);
+        drawPoint(sC, 6); drawPoint(hC, 6);
+
+        const angles = {};
+        angles.coudeG = drawAngle(pts[5], pts[7], pts[9], '#ff4444');
+        angles.coudeD = drawAngle(pts[6], pts[8], pts[10], '#ff4444');
+        angles.genouG = drawAngle(pts[11], pts[13], pts[15], '#ff4444');
+        angles.genouD = drawAngle(pts[12], pts[14], pts[16], '#ff4444');
+        angles.epauleG = drawAngle(pts[7], pts[5], pts[11], '#ff4444');
+        angles.epauleD = drawAngle(pts[8], pts[6], pts[12], '#ff4444');
+        angles.hancheG = drawAngle(pts[5], pts[11], pts[13], '#ff4444');
+        angles.hancheD = drawAngle(pts[6], pts[12], pts[14], '#ff4444');
+
+        const poseCount = poses.length >= 2 ? `
+          <div class="metric-card"><strong>${poses.length} personnes détectées</strong><span>Analyse du soignant détecté automatiquement.</span></div>` : '';
+        const fmt = (val) => (val === null ? 'N/A' : val + '°');
+        analysisContent.innerHTML = `
+          ${poseCount}
+          <div class="metric-card"><strong>Coude gauche</strong>${fmt(angles.coudeG)}</div>
+          <div class="metric-card"><strong>Coude droit</strong>${fmt(angles.coudeD)}</div>
+          <div class="metric-card"><strong>Épaule gauche</strong>${fmt(angles.epauleG)}</div>
+          <div class="metric-card"><strong>Épaule droite</strong>${fmt(angles.epauleD)}</div>
+          <div class="metric-card"><strong>Hanche gauche</strong>${fmt(angles.hancheG)}</div>
+          <div class="metric-card"><strong>Hanche droite</strong>${fmt(angles.hancheD)}</div>
+          <div class="metric-card"><strong>Genou gauche</strong>${fmt(angles.genouG)}</div>
+          <div class="metric-card"><strong>Genou droit</strong>${fmt(angles.genouD)}</div>
+        `;
+
+        const corrections = generateCorrections(angles);
+        correctionsList.innerHTML = corrections.map(c => `<div class="mb-4 pb-3 border-b border-gray-700 last:border-b-0"><p class="${c.severity} font-bold mb-1">${c.title}</p><p class="text-gray-300 text-xs leading-relaxed">${c.text}</p></div>`).join('');
+
+        analysisPanel.classList.remove('hidden');
+        showStatus('✅ Analyse terminée.' + (poses.length >= 2 ? ' (Soignant identifié par position)' : ''), 'success');
+      } catch (err) {
+        showStatus('❌ Erreur : ' + err.message, 'error');
+      }
+      selectBtn.disabled = false; resetBtn.disabled = false;
+    }
+
+    selectBtn.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', async (e) => {
+      const f = e.target.files?.[0]; if (!f) return;
+      try {
+        const bmp = await createImageBitmap(f);
+        await analyze(bmp);
+      } catch (err) { showStatus('❌ Impossible de lire l\'image.', 'error'); }
+    });
+    resetBtn.addEventListener('click', () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      canvas.style.width = ''; canvas.style.height = '';
+      analysisPanel.classList.add('hidden');
+      fileInput.value = ''; resetBtn.disabled = true;
+      showStatus('📷 Importez une photo pour commencer.', 'info');
     });
 
-    initializePoseLandmarker();
+    (async () => {
+      showStatus('⏳ Chargement de l\'IA (multi-pose)…', 'info');
+      try {
+        await tf.ready();
+        detector = await poseDetection.createDetector(
+          poseDetection.SupportedModels.MoveNet,
+          { modelType: poseDetection.movenet.modelType.MULTIPOSE_LIGHTNING }
+        );
+        showStatus('✅ IA prête. Importez une photo.', 'success');
+        selectBtn.disabled = false;
+      } catch (err) {
+        showStatus('❌ Erreur chargement IA : ' + err.message, 'error');
+      }
+    })();
   </script>
-</body>
-</html>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a0da23e626fc5420',t:'MTc4MTc4NDA5Ni4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script>
+</body></html>
