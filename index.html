@@ -4,204 +4,290 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Analyse Posturale - CAP AEPE</title>
-  
-  <!-- CSS : Interface Responsive et Épurée -->
   <style>
-    :root { --prap-green: #2ecc71; --prap-red: #e74c3c; --prap-blue: #3498db; }
-    body { font-family: -apple-system, system-ui, sans-serif; margin: 0; background: #121212; color: white; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
-    .header { padding: 20px; text-align: center; background: #2c3e50; width: 100%; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
-    .container { position: relative; width: 100%; max-width: 640px; margin-top: 10px; flex-grow: 1; display: flex; justify-content: center; }
-    html, body { min-height: 100%; }
-    body { font-family: -apple-system, system-ui, sans-serif; margin: 0; background: #121212; color: white; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
-    .header { padding: 16px 14px; text-align: center; background: #2c3e50; width: 100%; box-shadow: 0 4px 10px rgba(0,0,0,0.3); font-size: 1rem; }
-    .container { position: relative; width: 100%; max-width: 640px; margin-top: 8px; flex-grow: 1; display: flex; flex-direction: column; justify-content: flex-start; align-items: center; }
-    video { width: 100%; max-height: 28vh; min-height: 180px; border-radius: 15px; margin-bottom: 10px; background: black; object-fit: cover; }
-    canvas { width: 100%; max-height: 28vh; min-height: 180px; border-radius: 15px; display: none; }
-    .controls { padding: 12px 12px 18px; width: 100%; display: flex; flex-direction: column; align-items: center; background: #1a1a1a; gap: 10px; }
-    button { background: var(--prap-blue); color: white; border: none; padding: 14px 16px; border-radius: 999px; font-size: 0.95rem; font-weight: bold; cursor: pointer; transition: 0.2s; width: 100%; max-width: 320px; -webkit-tap-highlight-color: transparent; }
-    button:disabled { background: #555; cursor: wait; }
+    :root { --prap-green: #2ecc71; --prap-red: #e74c3c; --prap-blue: #3498db; --prap-yellow: #f1c40f; }
+    html, body { min-height: 100%; margin: 0; }
+    body { font-family: -apple-system, system-ui, sans-serif; background: #121212; color: white; display: flex; flex-direction: column; align-items: center; }
+    .header { padding: 18px 16px; text-align: center; background: #2c3e50; width: 100%; box-shadow: 0 4px 10px rgba(0,0,0,0.35); font-size: 1rem; }
+    .container { width: 100%; max-width: 640px; margin: 12px auto 0; display: flex; flex-direction: column; align-items: center; gap: 14px; }
+    .image-wrapper { position: relative; width: 100%; aspect-ratio: 4 / 3; min-height: 260px; background: #111; border-radius: 18px; overflow: hidden; display: flex; justify-content: center; align-items: center; }
+    #output_canvas { width: 100%; height: 100%; display: block; }
+    .analysis-legend { width: 100%; position: absolute; bottom: 12px; left: 12px; display: flex; flex-wrap: wrap; gap: 8px; }
+    .legend-item { display: flex; align-items: center; gap: 6px; border-radius: 999px; padding: 6px 10px; background: rgba(0,0,0,0.65); color: #fff; font-size: 0.82rem; }
+    .legend-color { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+    .controls { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 12px; background: #1a1a1a; padding: 18px 16px 22px; border-radius: 22px; }
+    .btn { background: var(--prap-blue); color: white; border: none; padding: 14px 18px; border-radius: 999px; font-size: 1rem; font-weight: 700; cursor: pointer; transition: transform 0.2s ease, background-color 0.2s ease; width: 100%; max-width: 320px; -webkit-tap-highlight-color: transparent; }
+    .btn:hover:not(:disabled) { transform: translateY(-1px); }
+    .btn:disabled { background: #555; cursor: default; }
+    .file-input { display: none; }
+    .status { width: 100%; max-width: 640px; margin-top: 6px; padding: 14px 16px; border-radius: 16px; font-weight: 700; text-align: center; font-size: 0.98rem; }
+    .status.ready { background: rgba(52, 152, 219, 0.18); border: 2px solid var(--prap-blue); }
+    .status.alert { background: rgba(231, 76, 60, 0.18); border: 2px solid var(--prap-red); }
+    .status.valid { background: rgba(46, 204, 113, 0.18); border: 2px solid var(--prap-green); }
+    .analysis-panel { width: 100%; max-width: 640px; background: #161616; border-radius: 18px; padding: 18px 20px; margin-top: 6px; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.04); }
+    .analysis-panel h2 { margin: 0 0 12px; font-size: 1rem; }
+    .analysis-item { margin-bottom: 12px; line-height: 1.45; }
+    .analysis-item strong { color: white; }
     @media (max-width: 480px) {
-      .header { padding: 14px 12px; font-size: 0.95rem; }
-      button { padding: 14px 18px; font-size: 0.98rem; }
-      .status { font-size: 0.95rem; width: 100%; }
+      .header { font-size: 0.95rem; }
+      .btn { font-size: 0.96rem; padding: 14px 16px; }
+      .analysis-panel { padding: 16px; }
     }
-    .status { margin-top: 15px; padding: 15px; border-radius: 12px; font-weight: bold; text-align: center; width: 90%; font-size: 1rem; }
-    .status.ready { background: rgba(52, 152, 219, 0.2); border: 2px solid var(--prap-blue); }
-    .status.alert { background: rgba(231, 76, 60, 0.2); border: 2px solid var(--prap-red); }
-    .status.valid { background: rgba(46, 204, 113, 0.2); border: 2px solid var(--prap-green); }
   </style>
 </head>
 <body>
-
   <div class="header">
-    <strong>ALM & PRAP Petite Enfance</strong><br>Analyse des Gestes Professionnels
+    <strong>ALM & PRAP Petite Enfance</strong><br>Analyse posturale par photo
   </div>
-  
   <div class="container">
-    <video id="webcam" playsinline muted autoplay></video>
-    <canvas id="output_canvas"></canvas>
+    <div class="image-wrapper">
+      <canvas id="output_canvas"></canvas>
+      <div class="analysis-legend">
+        <div class="legend-item"><span class="legend-color" style="background:#f1c40f"></span>Épaules / bassin</div>
+        <div class="legend-item"><span class="legend-color" style="background:#2ecc71"></span>Bras</div>
+        <div class="legend-item"><span class="legend-color" style="background:#3498db"></span>Jambes</div>
+        <div class="legend-item"><span class="legend-color" style="background:#e74c3c"></span>Zone d'alerte</div>
+      </div>
+    </div>
+    <div class="controls">
+      <input id="fileInput" class="file-input" type="file" accept="image/*">
+      <button id="selectPhoto" class="btn" disabled>Importer une photo depuis la galerie</button>
+      <button id="resetPhoto" class="btn" disabled>RECOMMENCER</button>
+      <div id="status" class="status">Chargement de l'IA...</div>
+    </div>
+    <div id="analysisPanel" class="analysis-panel" hidden>
+      <h2>Résultats de l'analyse</h2>
+      <div id="analysisSegments"></div>
+    </div>
   </div>
 
-  <div class="controls">
-    <button id="startCamera" disabled>ACTIVER LA CAMÉRA</button>
-    <button id="takePhoto" disabled>PRENDRE LA PHOTO</button>
-    <button id="resetPhoto" disabled>RECOMMENCER</button>
-    <div id="status" class="status">Chargement de l'IA...</div>
-  </div>
+  <script type="module">
+    import { PoseLandmarker, FilesetResolver, DrawingUtils } from "https://cdn.skypack.dev/@mediapipe/tasks-vision@0.10.0";
 
-<!-- Chargement des bibliothèques via module ES6 -->
-<script type="module">
-  import { PoseLandmarker, FilesetResolver, DrawingUtils } from "https://cdn.skypack.dev/@mediapipe/tasks-vision@0.10.0";
+    const canvas = document.getElementById("output_canvas");
+    const ctx = canvas.getContext("2d");
+    const statusDiv = document.getElementById("status");
+    const fileInput = document.getElementById("fileInput");
+    const selectPhotoButton = document.getElementById("selectPhoto");
+    const resetPhotoButton = document.getElementById("resetPhoto");
+    const analysisPanel = document.getElementById("analysisPanel");
+    const analysisSegments = document.getElementById("analysisSegments");
 
-  const video = document.getElementById("webcam");
-  const canvasElement = document.getElementById("output_canvas");
-  const canvasCtx = canvasElement.getContext("2d");
-  const statusDiv = document.getElementById("status");
-  const startCameraButton = document.getElementById("startCamera");
-  const takePhotoButton = document.getElementById("takePhoto");
-  const resetPhotoButton = document.getElementById("resetPhoto");
+    let poseLandmarker = null;
+    let currentBitmap = null;
+    const drawingUtils = new DrawingUtils(ctx);
 
-  let poseLandmarker;
-  let stream = null;
-  const drawingUtils = new DrawingUtils(canvasCtx);
+    const showStatus = (text, status = "ready") => {
+      statusDiv.innerText = text;
+      statusDiv.className = `status ${status}`;
+    };
 
-  const initializePoseLandmarker = async () => {
-    try {
-      const vision = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/wasm");
-      poseLandmarker = await PoseLandmarker.createFromOptions(vision, {
-        baseOptions: {
-          modelAssetPath: `https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_heavy/float16/1/pose_landmarker_heavy.task`,
-          delegate: "GPU"
-        },
-        runningMode: "IMAGE",
-        numPoses: 3,
-        minPoseDetectionConfidence: 0.2,
-        minPosePresenceConfidence: 0.2,
-        minTrackingConfidence: 0.2
-      });
-      statusDiv.innerText = "✅ IA prête. Activez la caméra.";
-      statusDiv.className = "status ready";
-      startCameraButton.disabled = false;
-    } catch (error) {
-      statusDiv.innerText = "❌ Erreur de chargement (Vérifiez votre connexion)";
-      statusDiv.className = "status alert";
-      console.error(error);
-    }
-  };
-  initializePoseLandmarker();
+    const resizeCanvas = (width, height) => {
+      canvas.width = width;
+      canvas.height = height;
+    };
 
-  const startCamera = async () => {
-    if (!poseLandmarker) return;
+    const drawLabel = (point, text, color) => {
+      ctx.font = "18px Inter, system-ui, sans-serif";
+      ctx.textBaseline = "bottom";
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = "rgba(0,0,0,0.7)";
+      ctx.fillStyle = color;
+      ctx.strokeText(text, point.x + 10, point.y - 10);
+      ctx.fillText(text, point.x + 10, point.y - 10);
+    };
 
-    try {
-      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment", width: 640, height: 480 } });
-      video.srcObject = stream;
-      await video.play();
+    const computeAngle = (a, b, c) => {
+      const ab = { x: a.x - b.x, y: a.y - b.y };
+      const cb = { x: c.x - b.x, y: c.y - b.y };
+      const dot = ab.x * cb.x + ab.y * cb.y;
+      const mag = Math.hypot(ab.x, ab.y) * Math.hypot(cb.x, cb.y);
+      if (mag === 0) return 0;
+      return Math.acos(Math.max(-1, Math.min(1, dot / mag))) * (180 / Math.PI);
+    };
 
-      canvasElement.width = video.videoWidth;
-      canvasElement.height = video.videoHeight;
-      video.style.display = "block";
-      canvasElement.style.display = "none";
-      resetPhotoButton.disabled = true;
-      statusDiv.innerText = "✅ Caméra prête. Cliquez sur PRENDRE LA PHOTO.";
-      statusDiv.className = "status ready";
-      takePhotoButton.disabled = false;
-      startCameraButton.disabled = true;
-    } catch (err) {
-      statusDiv.innerText = "❌ Caméra bloquée. Activez-la dans les réglages.";
-      statusDiv.className = "status alert";
-      console.error(err);
-    }
-  };
+    const drawSegment = (a, b, color, width = 5) => {
+      ctx.strokeStyle = color;
+      ctx.lineWidth = width;
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(b.x, b.y);
+      ctx.stroke();
+    };
 
-  const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+    const computeSlope = (a, b) => {
+      return Math.abs((a.y - b.y) / (a.x - b.x || 0.0001));
+    };
 
-  const takePhoto = async () => {
-    if (!poseLandmarker || !stream) return;
-
-    takePhotoButton.disabled = true;
-    statusDiv.className = "status ready";
-
-
-    try {
-      canvasCtx.drawImage(video, 0, 0, canvasElement.width, canvasElement.height);
-      const bitmap = await createImageBitmap(canvasElement);
-      const results = poseLandmarker.detect(bitmap);
-
-      if (results?.landmarks?.length > 0) {
-        drawingUtils.drawConnectors(results.landmarks, PoseLandmarker.POSE_CONNECTIONS, { color: '#00FF00', lineWidth: 4 });
-        drawingUtils.drawLandmarks(results.landmarks, { radius: 3, color: '#FF0000' });
-
-        const leftShoulder = results.landmarks[11];
-        const rightShoulder = results.landmarks[12];
-        const leftHip = results.landmarks[23];
-        const rightHip = results.landmarks[24];
-        const leftKnee = results.landmarks[25];
-        const rightKnee = results.landmarks[26];
-        const leftAnkle = results.landmarks[27];
-        const rightAnkle = results.landmarks[28];
-
-        const averagePoint = (a, b) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
-        const shoulders = averagePoint(leftShoulder, rightShoulder);
-        const hips = averagePoint(leftHip, rightHip);
-        const legAngle = (a, b, c) => {
-          const ab = { x: a.x - b.x, y: a.y - b.y };
-          const cb = { x: c.x - b.x, y: c.y - b.y };
-          const dot = ab.x * cb.x + ab.y * cb.y;
-          const mag = Math.hypot(ab.x, ab.y) * Math.hypot(cb.x, cb.y);
-          return mag === 0 ? 180 : Math.acos(Math.max(-1, Math.min(1, dot / mag))) * (180 / Math.PI);
-        };
-        const leftKneeAngle = legAngle(leftHip, leftKnee, leftAnkle);
-        const rightKneeAngle = legAngle(rightHip, rightKnee, rightAnkle);
-        const meanKnee = (leftKneeAngle + rightKneeAngle) / 2;
-        const spineLean = Math.abs(shoulders.x - hips.x);
-
-        if (spineLean > 0.22) {
-          statusDiv.innerText = "⚠️ Dos courbé ou penché. Approchez l'enfant du corps.";
-          statusDiv.className = "status alert";
-        } else if (meanKnee > 165) {
-          statusDiv.innerText = "❌ Jambes trop tendues. Fléchissez un peu les genoux.";
-          statusDiv.className = "status alert";
-        } else if (meanKnee < 90) {
-          statusDiv.innerText = "❌ Genoux trop pliés. Redressez légèrement les jambes.";
-          statusDiv.className = "status alert";
-        } else {
-          statusDiv.innerText = "✅ Position ALM stable. Dos droit avec genoux fléchis.";
-          statusDiv.className = "status valid";
-        }
-        resetPhotoButton.disabled = false;
-      } else {
-        statusDiv.innerText = "⚠️ Aucune pose détectée. Recommencez la prise de photo.";
-        statusDiv.className = "status alert";
-        resetPhotoButton.disabled = false;
+    const initializePoseLandmarker = async () => {
+      try {
+        const vision = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/wasm");
+        poseLandmarker = await PoseLandmarker.createFromOptions(vision, {
+          baseOptions: {
+            modelAssetPath: "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_heavy/float16/1/pose_landmarker_heavy.task",
+            delegate: "GPU"
+          },
+          runningMode: "IMAGE",
+          numPoses: 1,
+          minPoseDetectionConfidence: 0.3,
+          minPosePresenceConfidence: 0.3,
+          minTrackingConfidence: 0.3
+        });
+        showStatus("✅ IA prête. Importez une photo depuis votre galerie.", "ready");
+        selectPhotoButton.disabled = false;
+      } catch (error) {
+        showStatus("❌ Erreur de chargement de l'IA. Vérifiez votre connexion.", "alert");
+        console.error(error);
       }
-    } catch (error) {
-      statusDiv.innerText = `❌ Erreur d'analyse : ${error.message}`;
-      statusDiv.className = "status alert";
-      console.error(error);
-    } finally {
-      takePhotoButton.disabled = false;
-    }
-  };
+    };
 
-  const resetPhoto = () => {
-    if (stream) {
-      const tracks = stream.getTracks();
-      tracks.forEach((track) => track.stop());
-      stream = null;
-    }
-    video.srcObject = null;
-    canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
-    startCameraButton.disabled = false;
-    takePhotoButton.disabled = true;
-    resetPhotoButton.disabled = true;
-    statusDiv.innerText = "✅ Caméra réinitialisée. Activez-la pour reprendre une photo.";
-    statusDiv.className = "status ready";
-  };
+    const analyzeImage = async (imageBitmap) => {
+      if (!poseLandmarker) return;
+      showStatus("⏳ Photo envoyée à l'IA pour analyse...", "ready");
 
-  startCameraButton.addEventListener("click", startCamera);
-  takePhotoButton.addEventListener("click", takePhoto);
-  resetPhotoButton.addEventListener("click", resetPhoto);
-</script>
+      const results = poseLandmarker.detect(imageBitmap);
+      resizeCanvas(imageBitmap.width, imageBitmap.height);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(imageBitmap, 0, 0, canvas.width, canvas.height);
+
+      if (!results?.landmarks?.length) {
+        showStatus("⚠️ Aucune posture reconnue. Essayez une autre photo.", "alert");
+        analysisSegments.innerHTML = `<div class='analysis-item'>Aucun segment corporel détecté.</div>`;
+        analysisPanel.hidden = false;
+        resetPhotoButton.disabled = false;
+        return;
+      }
+
+      const landmarks = results.landmarks[0];
+      const point = (index) => landmarks[index] || { x: 0, y: 0 };
+      const leftShoulder = point(11);
+      const rightShoulder = point(12);
+      const leftElbow = point(13);
+      const rightElbow = point(14);
+      const leftWrist = point(15);
+      const rightWrist = point(16);
+      const leftHip = point(23);
+      const rightHip = point(24);
+      const leftKnee = point(25);
+      const rightKnee = point(26);
+      const leftAnkle = point(27);
+      const rightAnkle = point(28);
+      const nose = point(0);
+      const leftEye = point(1);
+      const rightEye = point(2);
+      const leftEar = point(3);
+      const rightEar = point(4);
+
+      const shoulderCenter = { x: (leftShoulder.x + rightShoulder.x) / 2, y: (leftShoulder.y + rightShoulder.y) / 2 };
+      const hipCenter = { x: (leftHip.x + rightHip.x) / 2, y: (leftHip.y + rightHip.y) / 2 };
+      const headCenter = { x: (leftEye.x + rightEye.x + nose.x) / 3, y: (leftEye.y + rightEye.y + nose.y) / 3 };
+
+      const leftKneeAngle = computeAngle(leftHip, leftKnee, leftAnkle);
+      const rightKneeAngle = computeAngle(rightHip, rightKnee, rightAnkle);
+      const leftElbowAngle = computeAngle(leftShoulder, leftElbow, leftWrist);
+      const rightElbowAngle = computeAngle(rightShoulder, rightElbow, rightWrist);
+      const trunkAngle = computeAngle(shoulderCenter, hipCenter, leftKnee);
+      const shoulderAlignment = Math.abs(leftShoulder.y - rightShoulder.y);
+      const hipAlignment = Math.abs(leftHip.y - rightHip.y);
+      const spineOffset = Math.abs(shoulderCenter.x - hipCenter.x);
+      const headTilt = Math.abs(leftEye.y - rightEye.y);
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(imageBitmap, 0, 0, canvas.width, canvas.height);
+      drawSegment(leftShoulder, rightShoulder, "#f1c40f", 4);
+      drawSegment(leftHip, rightHip, "#f1c40f", 4);
+      drawSegment(leftShoulder, leftElbow, "#2ecc71", 4);
+      drawSegment(leftElbow, leftWrist, "#2ecc71", 4);
+      drawSegment(rightShoulder, rightElbow, "#2ecc71", 4);
+      drawSegment(rightElbow, rightWrist, "#2ecc71", 4);
+      drawSegment(leftHip, leftKnee, "#3498db", 4);
+      drawSegment(leftKnee, leftAnkle, "#3498db", 4);
+      drawSegment(rightHip, rightKnee, "#3498db", 4);
+      drawSegment(rightKnee, rightAnkle, "#3498db", 4);
+      drawSegment(shoulderCenter, hipCenter, spineOffset > 0.18 ? "#e74c3c" : "#2ecc71", 4);
+      drawSegment(headCenter, shoulderCenter, headTilt > 0.04 ? "#e74c3c" : "#3498db", 4);
+
+      drawingUtils.drawLandmarks(landmarks, { color: "#ffffff", radius: 4 });
+      drawLabel(leftKnee, `${Math.round(leftKneeAngle)}°`, "#2ecc71");
+      drawLabel(rightKnee, `${Math.round(rightKneeAngle)}°`, "#2ecc71");
+      drawLabel(leftElbow, `${Math.round(leftElbowAngle)}°`, "#f1c40f");
+      drawLabel(rightElbow, `${Math.round(rightElbowAngle)}°`, "#f1c40f");
+      drawLabel(shoulderCenter, `${Math.round(trunkAngle)}°`, spineOffset > 0.18 ? "#e74c3c" : "#3498db");
+
+      const postureNotes = [];
+      const summary = [];
+      if (shoulderAlignment > 0.06) {
+        postureNotes.push("Épaules désalignées : inclinaison possible du buste.");
+      } else {
+        summary.push("Épaules alignées.");
+      }
+      if (hipAlignment > 0.08) {
+        postureNotes.push("Hanches déséquilibrées : attention à la rotation du bassin.");
+      } else {
+        summary.push("Hanches équilibrées.");
+      }
+      if (spineOffset > 0.18) {
+        postureNotes.push("Le dos est incliné latéralement. Vérifiez l'alignement de la colonne.");
+      } else {
+        summary.push("Colonne plutôt droite.");
+      }
+      if (leftKneeAngle < 90 || rightKneeAngle < 90) {
+        postureNotes.push("Genoux très fléchis : attention à la stabilité.");
+      } else if (leftKneeAngle > 170 || rightKneeAngle > 170) {
+        postureNotes.push("Genoux presque tendus : pliez un peu pour protéger le dos.");
+      } else {
+        summary.push("Genoux bien positionnés.");
+      }
+      if (leftElbowAngle < 140 || rightElbowAngle < 140) {
+        postureNotes.push("Bras fléchis : vérifiez la hauteur des avant-bras.");
+      } else {
+        summary.push("Bras bien étendus.");
+      }
+      if (headTilt > 0.04) {
+        postureNotes.push("Tête inclinée : regardez droit devant pour mieux aligner le cou.");
+      } else {
+        summary.push("Tête bien alignée.");
+      }
+      if (!postureNotes.length) {
+        postureNotes.push("Posture stable détectée : dos, hanches et genoux bien alignés.");
+      }
+
+      analysisSegments.innerHTML = `
+        <div class='analysis-item'><strong>Angle des genoux :</strong> gauche ${Math.round(leftKneeAngle)}° / droite ${Math.round(rightKneeAngle)}°</div>
+        <div class='analysis-item'><strong>Angle des coudes :</strong> gauche ${Math.round(leftElbowAngle)}° / droite ${Math.round(rightElbowAngle)}°</div>
+        <div class='analysis-item'><strong>Inclinaison du tronc :</strong> ${Math.round(trunkAngle)}°</div>
+        <div class='analysis-item'><strong>Alignement épaules :</strong> ${shoulderAlignment > 0.06 ? "désalignées" : "alignées"}</div>
+        <div class='analysis-item'><strong>Alignement hanches :</strong> ${hipAlignment > 0.08 ? "déséquilibrées" : "équilibrées"}</div>
+        <div class='analysis-item'><strong>Tête :</strong> ${headTilt > 0.04 ? "inclinée" : "droite"}</div>
+        <div class='analysis-item'><strong>Recommandations :</strong> ${postureNotes.join(" ")}</div>
+        <div class='analysis-item'><strong>Points positifs :</strong> ${summary.join(" ")}</div>
+      `;
+      analysisPanel.hidden = false;
+      showStatus("✅ Analyse enrichie terminée : segments clés et recommandations affichés.", "valid");
+      resetPhotoButton.disabled = false;
+    };
+
+    const handleFileSelect = async (event) => {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      currentBitmap = await createImageBitmap(file);
+      await analyzeImage(currentBitmap);
+    };
+
+    selectPhotoButton.addEventListener("click", () => fileInput.click());
+    fileInput.addEventListener("change", handleFileSelect);
+
+    resetPhotoButton.addEventListener("click", () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      analysisPanel.hidden = true;
+      analysisSegments.innerHTML = "";
+      fileInput.value = "";
+      currentBitmap = null;
+      resetPhotoButton.disabled = true;
+      showStatus("✅ Importez une photo pour lancer l'analyse.", "ready");
+    });
+
+    initializePoseLandmarker();
+  </script>
 </body>
 </html>
