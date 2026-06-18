@@ -12,7 +12,7 @@
     .header { padding: 20px; text-align: center; background: #2c3e50; width: 100%; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
     .container { position: relative; width: 100%; max-width: 640px; margin-top: 10px; flex-grow: 1; display: flex; justify-content: center; }
     /* Safari iOS nécessite playsinline et muted */
-    video { display: none; }
+    video { width: 100%; height: auto; border-radius: 15px; margin-bottom: 10px; }
     canvas { width: 100%; height: auto; border-radius: 15px; transform: scaleX(-1); }
     .controls { padding: 20px; width: 100%; display: flex; flex-direction: column; align-items: center; background: #1a1a1a; }
     button { background: var(--prap-blue); color: white; border: none; padding: 18px 40px; border-radius: 35px; font-size: 1.1rem; font-weight: bold; cursor: pointer; transition: 0.3s; width: 80%; max-width: 300px; -webkit-tap-highlight-color: transparent; }
@@ -30,12 +30,13 @@
   </div>
   
   <div class="container">
+    <video id="webcam" playsinline muted autoplay></video>
     <canvas id="output_canvas"></canvas>
   </div>
 
   <div class="controls">
-    <input id="photoInput" type="file" accept="image/*" capture="environment">
-    <button id="analyzePhoto" disabled>ANALYSER LA PHOTO</button>
+    <button id="startCamera" disabled>ACTIVER LA CAMÉRA</button>
+    <button id="takePhoto" disabled>PRENDRE LA PHOTO</button>
     <div id="status" class="status">Chargement de l'IA...</div>
   </div>
 
@@ -43,14 +44,15 @@
 <script type="module">
   import { PoseLandmarker, FilesetResolver, DrawingUtils } from "https://cdn.skypack.dev/@mediapipe/tasks-vision@0.10.0";
 
+  const video = document.getElementById("webcam");
   const canvasElement = document.getElementById("output_canvas");
   const canvasCtx = canvasElement.getContext("2d");
   const statusDiv = document.getElementById("status");
-  const photoInput = document.getElementById("photoInput");
-  const analyzePhotoButton = document.getElementById("analyzePhoto");
+  const startCameraButton = document.getElementById("startCamera");
+  const takePhotoButton = document.getElementById("takePhoto");
 
   let poseLandmarker;
-  let loadedImage = null;
+  let stream = null;
   const drawingUtils = new DrawingUtils(canvasCtx);
 
   const initializePoseLandmarker = async () => {
@@ -64,9 +66,9 @@
         runningMode: "IMAGE",
         numPoses: 1
       });
-      statusDiv.innerText = "✅ IA prête. Choisissez ou prenez une photo.";
+      statusDiv.innerText = "✅ IA prête. Activez la caméra.";
       statusDiv.className = "status ready";
-      analyzePhotoButton.disabled = true;
+      startCameraButton.disabled = false;
     } catch (error) {
       statusDiv.innerText = "❌ Erreur de chargement (Vérifiez votre connexion)";
       statusDiv.className = "status alert";
@@ -75,37 +77,46 @@
   };
   initializePoseLandmarker();
 
-  photoInput.addEventListener("change", async () => {
-    const file = photoInput.files?.[0];
-    if (!file) {
-      analyzePhotoButton.disabled = true;
-      return;
-    }
-
-    const image = new Image();
-    image.onload = () => {
-      canvasElement.width = image.width;
-      canvasElement.height = image.height;
-      canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
-      canvasCtx.drawImage(image, 0, 0, canvasElement.width, canvasElement.height);
-      loadedImage = image;
-      analyzePhotoButton.disabled = false;
-      statusDiv.innerText = "Photo chargée. Cliquez sur analyser.";
-      statusDiv.className = "status ready";
-      URL.revokeObjectURL(image.src);
-    };
-    image.src = URL.createObjectURL(file);
-  });
-
-  analyzePhotoButton.addEventListener("click", async () => {
-    if (!loadedImage || !poseLandmarker) return;
-
-    statusDiv.innerText = "Analyse en cours...";
-    statusDiv.className = "status ready";
+  const startCamera = async () => {
+    if (!poseLandmarker) return;
 
     try {
-      const results = poseLandmarker.detect(loadedImage);
-      canvasCtx.drawImage(loadedImage, 0, 0, canvasElement.width, canvasElement.height);
+      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment", width: 640, height: 480 } });
+      video.srcObject = stream;
+      await video.play();
+
+      canvasElement.width = video.videoWidth;
+      canvasElement.height = video.videoHeight;
+      video.style.display = "block";
+      statusDiv.innerText = "✅ Caméra prête. Cliquez sur PRENDRE LA PHOTO.";
+      statusDiv.className = "status ready";
+      takePhotoButton.disabled = false;
+      startCameraButton.disabled = true;
+    } catch (err) {
+      statusDiv.innerText = "❌ Caméra bloquée. Activez-la dans les réglages.";
+      statusDiv.className = "status alert";
+      console.error(err);
+    }
+  };
+
+  const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+  const takePhoto = async () => {
+    if (!poseLandmarker || !stream) return;
+
+    takePhotoButton.disabled = true;
+    statusDiv.className = "status ready";
+
+    for (let count = 3; count > 0; count -= 1) {
+      statusDiv.innerText = `Prise dans ${count}...`;
+      await delay(1000);
+    }
+
+    canvasCtx.drawImage(video, 0, 0, canvasElement.width, canvasElement.height);
+    statusDiv.innerText = "Analyse en cours...";
+
+    try {
+      const results = poseLandmarker.detect(canvasElement);
 
       if (results?.landmarks?.length > 0) {
         drawingUtils.drawConnectors(results.landmarks, PoseLandmarker.POSE_CONNECTIONS, { color: '#00FF00', lineWidth: 4 });
@@ -126,15 +137,20 @@
           statusDiv.className = "status valid";
         }
       } else {
-        statusDiv.innerText = "⚠️ Aucune pose détectée. Reprenez une photo plus nette.";
+        statusDiv.innerText = "⚠️ Aucune pose détectée. Recommencez la prise de photo.";
         statusDiv.className = "status alert";
       }
     } catch (error) {
-      statusDiv.innerText = "❌ Erreur d'analyse. Réessayez avec une autre photo.";
+      statusDiv.innerText = "❌ Erreur d'analyse. Réessayez.";
       statusDiv.className = "status alert";
       console.error(error);
+    } finally {
+      takePhotoButton.disabled = false;
     }
-  });
+  };
+
+  startCameraButton.addEventListener("click", startCamera);
+  takePhotoButton.addEventListener("click", takePhoto);
 </script>
 </body>
 </html>
