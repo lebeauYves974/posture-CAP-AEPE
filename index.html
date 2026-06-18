@@ -30,27 +30,28 @@
   </div>
   
   <div class="container">
-    <video id="webcam" playsinline muted autoplay></video>
     <canvas id="output_canvas"></canvas>
   </div>
 
   <div class="controls">
+    <input id="photoInput" type="file" accept="image/*" capture="environment">
+    <button id="analyzePhoto" disabled>ANALYSER LA PHOTO</button>
     <div id="status" class="status">Chargement de l'IA...</div>
-    <button id="enableWebcam" disabled>INITIALISATION...</button>
   </div>
 
 <!-- Chargement des bibliothèques via module ES6 -->
 <script type="module">
   import { PoseLandmarker, FilesetResolver, DrawingUtils } from "https://cdn.skypack.dev/@mediapipe/tasks-vision@0.10.0";
 
-  const video = document.getElementById("webcam");
   const canvasElement = document.getElementById("output_canvas");
   const canvasCtx = canvasElement.getContext("2d");
   const statusDiv = document.getElementById("status");
-  const enableWebcamButton = document.getElementById("enableWebcam");
+  const photoInput = document.getElementById("photoInput");
+  const analyzePhotoButton = document.getElementById("analyzePhoto");
 
-  let poseLandmarker = undefined;
-  let lastVideoTime = -1;
+  let poseLandmarker;
+  let loadedImage = null;
+  const drawingUtils = new DrawingUtils(canvasCtx);
 
   const initializePoseLandmarker = async () => {
     try {
@@ -60,13 +61,12 @@
           modelAssetPath: `https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task`,
           delegate: "GPU"
         },
-        runningMode: "VIDEO",
+        runningMode: "IMAGE",
         numPoses: 1
       });
-      statusDiv.innerText = "✅ IA Prête. Positionnez-vous de profil.";
+      statusDiv.innerText = "✅ IA prête. Choisissez ou prenez une photo.";
       statusDiv.className = "status ready";
-      enableWebcamButton.innerText = "ACTIVER LA CAMÉRA";
-      enableWebcamButton.disabled = false;
+      analyzePhotoButton.disabled = true;
     } catch (error) {
       statusDiv.innerText = "❌ Erreur de chargement (Vérifiez votre connexion)";
       statusDiv.className = "status alert";
@@ -75,52 +75,43 @@
   };
   initializePoseLandmarker();
 
-  const startCamera = async () => {
-    if (!poseLandmarker) return;
+  photoInput.addEventListener("change", async () => {
+    const file = photoInput.files?.[0];
+    if (!file) {
+      analyzePhotoButton.disabled = true;
+      return;
+    }
+
+    const image = new Image();
+    image.onload = () => {
+      canvasElement.width = image.width;
+      canvasElement.height = image.height;
+      canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+      canvasCtx.drawImage(image, 0, 0, canvasElement.width, canvasElement.height);
+      loadedImage = image;
+      analyzePhotoButton.disabled = false;
+      statusDiv.innerText = "Photo chargée. Cliquez sur analyser.";
+      statusDiv.className = "status ready";
+      URL.revokeObjectURL(image.src);
+    };
+    image.src = URL.createObjectURL(file);
+  });
+
+  analyzePhotoButton.addEventListener("click", async () => {
+    if (!loadedImage || !poseLandmarker) return;
+
+    statusDiv.innerText = "Analyse en cours...";
+    statusDiv.className = "status ready";
 
     try {
-      const constraints = { video: { facingMode: "user", width: 640, height: 480 } };
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      video.srcObject = stream;
-      
-      video.addEventListener("loadeddata", () => {
-        canvasElement.width = video.videoWidth;
-        canvasElement.height = video.videoHeight;
-        enableWebcamButton.style.display = "none";
-        statusDiv.innerText = "Analyse en cours...";
-        window.requestAnimationFrame(renderLoop);
-      });
-    } catch (err) {
-      statusDiv.innerText = "❌ Caméra bloquée. Activez-la dans les réglages.";
-      statusDiv.className = "status alert";
-      alert("Safari nécessite l'autorisation de la caméra en HTTPS.");
-    }
-  };
+      const results = poseLandmarker.detect(loadedImage);
+      canvasCtx.drawImage(loadedImage, 0, 0, canvasElement.width, canvasElement.height);
 
-  enableWebcamButton.addEventListener("click", startCamera);
+      if (results?.landmarks?.length > 0) {
+        drawingUtils.drawConnectors(results.landmarks, PoseLandmarker.POSE_CONNECTIONS, { color: '#00FF00', lineWidth: 4 });
+        drawingUtils.drawLandmarks(results.landmarks, { radius: 3, color: '#FF0000' });
 
-  async function renderLoop() {
-    let startTimeMs = performance.now();
-    
-    if (lastVideoTime !== video.currentTime) {
-      lastVideoTime = video.currentTime;
-      const results = poseLandmarker.detectForVideo(video, startTimeMs);
-
-      canvasCtx.save();
-      canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
-      canvasCtx.drawImage(video, 0, 0, canvasElement.width, canvasElement.height);
-
-      if (results.landmarks && results.landmarks.length > 0) {
-        const drawingUtils = new DrawingUtils(canvasCtx);
-        const landmarks = results.landmarks;
-
-        drawingUtils.drawConnectors(landmarks, PoseLandmarker.POSE_CONNECTIONS, { color: '#00FF00', lineWidth: 4 });
-        drawingUtils.drawLandmarks(landmarks, { radius: 3, color: '#FF0000' });
-
-        const shoulder = landmarks[3];
-        const hip = landmarks[4];
-        const knee = landmarks[5];
-
+        const [shoulder, hip, knee] = [results.landmarks[3], results.landmarks[4], results.landmarks[5]];
         const spineLean = Math.abs(shoulder.x - hip.x);
         const legFlexion = Math.abs(hip.y - knee.y);
 
@@ -134,11 +125,16 @@
           statusDiv.innerText = "✅ Position ALM sécurisée (Dos droit et jambes fléchies)";
           statusDiv.className = "status valid";
         }
+      } else {
+        statusDiv.innerText = "⚠️ Aucune pose détectée. Reprenez une photo plus nette.";
+        statusDiv.className = "status alert";
       }
-      canvasCtx.restore();
+    } catch (error) {
+      statusDiv.innerText = "❌ Erreur d'analyse. Réessayez avec une autre photo.";
+      statusDiv.className = "status alert";
+      console.error(error);
     }
-    window.requestAnimationFrame(renderLoop);
-  }
+  });
 </script>
 </body>
 </html>
