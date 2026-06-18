@@ -116,7 +116,8 @@
     statusDiv.innerText = "Analyse en cours...";
 
     try {
-      const results = poseLandmarker.detect(canvasElement);
+      const bitmap = await createImageBitmap(canvasElement);
+      const results = poseLandmarker.detect(bitmap);
 
       if (results?.landmarks?.length > 0) {
         drawingUtils.drawConnectors(results.landmarks, PoseLandmarker.POSE_CONNECTIONS, { color: '#00FF00', lineWidth: 4 });
@@ -141,7 +142,7 @@
         statusDiv.className = "status alert";
       }
     } catch (error) {
-      statusDiv.innerText = "❌ Erreur d'analyse. Réessayez.";
+      statusDiv.innerText = `❌ Erreur d'analyse : ${error.message}`;
       statusDiv.className = "status alert";
       console.error(error);
     } finally {
