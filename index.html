@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Analyse Posturale - CAP AEPE</title>
+  
+  <!-- CSS : Interface Responsive et Épurée -->
+  <style>
+    :root { --prap-green: #2ecc71; --prap-red: #e74c3c; --prap-blue: #3498db; }
+    body { font-family: -apple-system, system-ui, sans-serif; margin: 0; background: #121212; color: white; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
+    .header { padding: 20px; text-align: center; background: #2c3e50; width: 100%; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+    .container { position: relative; width: 100%; max-width: 640px; margin-top: 10px; flex-grow: 1; display: flex; justify-content: center; }
+    /* Safari iOS nécessite playsinline et muted */
+    video { display: none; }
+    canvas { width: 100%; height: auto; border-radius: 15px; transform: scaleX(-1); }
+    .controls { padding: 20px; width: 100%; display: flex; flex-direction: column; align-items: center; background: #1a1a1a; }
+    button { background: var(--prap-blue); color: white; border: none; padding: 18px 40px; border-radius: 35px; font-size: 1.1rem; font-weight: bold; cursor: pointer; transition: 0.3s; width: 80%; max-width: 300px; -webkit-tap-highlight-color: transparent; }
+    button:disabled { background: #555; cursor: wait; }
+    .status { margin-top: 15px; padding: 15px; border-radius: 12px; font-weight: bold; text-align: center; width: 90%; font-size: 1rem; }
+    .status.ready { background: rgba(52, 152, 219, 0.2); border: 2px solid var(--prap-blue); }
+    .status.alert { background: rgba(231, 76, 60, 0.2); border: 2px solid var(--prap-red); }
+    .status.valid { background: rgba(46, 204, 113, 0.2); border: 2px solid var(--prap-green); }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <strong>ALM & PRAP Petite Enfance</strong><br>Analyse des Gestes Professionnels
+  </div>
+  
+  <div class="container">
+    <video id="webcam" playsinline muted autoplay></video>
+    <canvas id="output_canvas"></canvas>
+  </div>
+
+  <div class="controls">
+    <div id="status" class="status">Chargement de l'IA...</div>
+    <button id="enableWebcam" disabled>INITIALISATION...</button>
+  </div>
+
+<!-- Chargement des bibliothèques via module ES6 -->
+<script type="module">
+  import { PoseLandmarker, FilesetResolver, DrawingUtils } from "https://cdn.skypack.dev/@mediapipe/tasks-vision@0.10.0";
+
+  const video = document.getElementById("webcam");
+  const canvasElement = document.getElementById("output_canvas");
+  const canvasCtx = canvasElement.getContext("2d");
+  const statusDiv = document.getElementById("status");
+  const enableWebcamButton = document.getElementById("enableWebcam");
+
+  let poseLandmarker = undefined;
+  let lastVideoTime = -1;
+
+  const initializePoseLandmarker = async () => {
+    try {
+      const vision = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/wasm");
+      poseLandmarker = await PoseLandmarker.createFromOptions(vision, {
+        baseOptions: {
+          modelAssetPath: `https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task`,
+          delegate: "GPU"
+        },
+        runningMode: "VIDEO",
+        numPoses: 1
+      });
+      statusDiv.innerText = "✅ IA Prête. Positionnez-vous de profil.";
+      statusDiv.className = "status ready";
+      enableWebcamButton.innerText = "ACTIVER LA CAMÉRA";
+      enableWebcamButton.disabled = false;
+    } catch (error) {
+      statusDiv.innerText = "❌ Erreur de chargement (Vérifiez votre connexion)";
+      statusDiv.className = "status alert";
+      console.error(error);
+    }
+  };
+  initializePoseLandmarker();
+
+  const startCamera = async () => {
+    if (!poseLandmarker) return;
+
+    try {
+      const constraints = { video: { facingMode: "user", width: 640, height: 480 } };
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      video.srcObject = stream;
+      
+      video.addEventListener("loadeddata", () => {
+        canvasElement.width = video.videoWidth;
+        canvasElement.height = video.videoHeight;
+        enableWebcamButton.style.display = "none";
+        statusDiv.innerText = "Analyse en cours...";
+        window.requestAnimationFrame(renderLoop);
+      });
+    } catch (err) {
+      statusDiv.innerText = "❌ Caméra bloquée. Activez-la dans les réglages.";
+      statusDiv.className = "status alert";
+      alert("Safari nécessite l'autorisation de la caméra en HTTPS.");
+    }
+  };
+
+  enableWebcamButton.addEventListener("click", startCamera);
+
+  async function renderLoop() {
+    let startTimeMs = performance.now();
+    
+    if (lastVideoTime !== video.currentTime) {
+      lastVideoTime = video.currentTime;
+      const results = poseLandmarker.detectForVideo(video, startTimeMs);
+
+      canvasCtx.save();
+      canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+      canvasCtx.drawImage(video, 0, 0, canvasElement.width, canvasElement.height);
+
+      if (results.landmarks && results.landmarks.length > 0) {
+        const drawingUtils = new DrawingUtils(canvasCtx);
+        const landmarks = results.landmarks;
+
+        drawingUtils.drawConnectors(landmarks, PoseLandmarker.POSE_CONNECTIONS, { color: '#00FF00', lineWidth: 4 });
+        drawingUtils.drawLandmarks(landmarks, { radius: 3, color: '#FF0000' });
+
+        const shoulder = landmarks[3];
+        const hip = landmarks[4];
+        const knee = landmarks[5];
+
+        const spineLean = Math.abs(shoulder.x - hip.x);
+        const legFlexion = Math.abs(hip.y - knee.y);
+
+        if (spineLean > 0.18) {
+          statusDiv.innerText = "⚠️ Dos courbé ! Rapprochez l'enfant du corps (PSPEE 1)";
+          statusDiv.className = "status alert";
+        } else if (legFlexion < 0.1) {
+          statusDiv.innerText = "❌ Pliez les jambes ! Utilisez vos cuisses (PSPEE 4)";
+          statusDiv.className = "status alert";
+        } else {
+          statusDiv.innerText = "✅ Position ALM sécurisée (Dos droit et jambes fléchies)";
+          statusDiv.className = "status valid";
+        }
+      }
+      canvasCtx.restore();
+    }
+    window.requestAnimationFrame(renderLoop);
+  }
+</script>
+</body>
+</html>
