@@ -3,35 +3,38 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#2c3e50">
   <title>Analyse Posturale - CAP AEPE</title>
   <style>
     :root { --prap-green: #2ecc71; --prap-red: #e74c3c; --prap-blue: #3498db; --prap-yellow: #f1c40f; }
-    html, body { min-height: 100%; margin: 0; }
-    body { font-family: -apple-system, system-ui, sans-serif; background: #121212; color: white; display: flex; flex-direction: column; align-items: center; }
+    html, body { min-height: 100%; margin: 0; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+    body { font-family: 'Segoe UI', 'Helvetica Neue', system-ui, sans-serif; background: #121212; color: white; display: flex; flex-direction: column; align-items: center; user-select: none; -webkit-user-select: none; }
     .header { padding: 18px 16px; text-align: center; background: #2c3e50; width: 100%; box-shadow: 0 4px 10px rgba(0,0,0,0.35); font-size: 1rem; }
     .container { width: 100%; max-width: 640px; margin: 12px auto 0; display: flex; flex-direction: column; align-items: center; gap: 14px; }
-    .image-wrapper { position: relative; width: 100%; aspect-ratio: 4 / 3; min-height: 260px; background: #111; border-radius: 18px; overflow: hidden; display: flex; justify-content: center; align-items: center; }
-    #output_canvas { width: 100%; height: 100%; display: block; }
-    .analysis-legend { width: 100%; position: absolute; bottom: 12px; left: 12px; display: flex; flex-wrap: wrap; gap: 8px; }
-    .legend-item { display: flex; align-items: center; gap: 6px; border-radius: 999px; padding: 6px 10px; background: rgba(0,0,0,0.65); color: #fff; font-size: 0.82rem; }
+    .image-wrapper { position: relative; width: 100%; background: #111; border-radius: 18px; overflow: hidden; display: flex; justify-content: center; align-items: center; }
+    #output_canvas { width: 100%; height: auto; display: block; max-height: none; -webkit-backface-visibility: hidden; backface-visibility: hidden; }
+    .analysis-legend { width: 100%; position: absolute; bottom: 12px; left: 12px; display: flex; flex-wrap: wrap; gap: 8px; pointer-events: none; }
+    .legend-item { display: flex; align-items: center; gap: 6px; border-radius: 999px; padding: 6px 10px; background: rgba(0,0,0,0.65); color: #fff; font-size: 0.82rem; font-weight: 500; }
     .legend-color { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
     .controls { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 12px; background: #1a1a1a; padding: 18px 16px 22px; border-radius: 22px; }
-    .btn { background: var(--prap-blue); color: white; border: none; padding: 14px 18px; border-radius: 999px; font-size: 1rem; font-weight: 700; cursor: pointer; transition: transform 0.2s ease, background-color 0.2s ease; width: 100%; max-width: 320px; -webkit-tap-highlight-color: transparent; }
-    .btn:hover:not(:disabled) { transform: translateY(-1px); }
-    .btn:disabled { background: #555; cursor: default; }
+    .btn { background: var(--prap-blue); color: white; border: none; padding: 14px 18px; border-radius: 999px; font-size: 1rem; font-weight: 700; cursor: pointer; transition: transform 0.2s ease, background-color 0.2s ease; width: 100%; max-width: 320px; -webkit-tap-highlight-color: transparent; will-change: transform; }
+    .btn:hover:not(:disabled) { transform: translateY(-1px); background-color: #2980b9; }
+    .btn:focus { outline: 2px solid var(--prap-green); outline-offset: 2px; }
+    .btn:disabled { background: #555; cursor: default; opacity: 0.6; }
     .file-input { display: none; }
     .status { width: 100%; max-width: 640px; margin-top: 6px; padding: 14px 16px; border-radius: 16px; font-weight: 700; text-align: center; font-size: 0.98rem; }
     .status.ready { background: rgba(52, 152, 219, 0.18); border: 2px solid var(--prap-blue); }
     .status.alert { background: rgba(231, 76, 60, 0.18); border: 2px solid var(--prap-red); }
     .status.valid { background: rgba(46, 204, 113, 0.18); border: 2px solid var(--prap-green); }
     .analysis-panel { width: 100%; max-width: 640px; background: #161616; border-radius: 18px; padding: 18px 20px; margin-top: 6px; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.04); }
-    .analysis-panel h2 { margin: 0 0 12px; font-size: 1rem; }
-    .analysis-item { margin-bottom: 12px; line-height: 1.45; }
-    .analysis-item strong { color: white; }
+    .analysis-panel h2 { margin: 0 0 12px; font-size: 1rem; font-weight: 700; }
+    .analysis-item { margin-bottom: 12px; line-height: 1.5; font-size: 0.95rem; }
+    .analysis-item strong { color: #fff; font-weight: 600; }
     @media (max-width: 480px) {
       .header { font-size: 0.95rem; }
       .btn { font-size: 0.96rem; padding: 14px 16px; }
       .analysis-panel { padding: 16px; }
+      .legend-item { font-size: 0.75rem; padding: 5px 8px; }
     }
   </style>
 </head>
@@ -54,6 +57,12 @@
       <button id="selectPhoto" class="btn" disabled>Importer une photo depuis la galerie</button>
       <button id="resetPhoto" class="btn" disabled>RECOMMENCER</button>
       <div id="status" class="status">Chargement de l'IA...</div>
+      <div id="debugPanel" style="margin-top:10px;padding:10px;border-radius:10px;background:rgba(0,0,0,0.6);font-size:0.85rem;display:none;color:#fff;max-width:640px;">
+        <div><strong>Debug:</strong></div>
+        <div id="debugCounts">Segments: 0 · Angles: 0 · Points: 0 · Erreurs: 0</div>
+        <div id="debugErrors" style="margin-top:6px;white-space:pre-wrap;max-height:120px;overflow:auto;font-size:0.82rem;color:#ffcccc"></div>
+          <div id="debugDetails" style="margin-top:8px;font-size:0.82rem;color:#ccffcc;max-height:140px;overflow:auto;white-space:pre-wrap"></div>
+      </div>
     </div>
     <div id="analysisPanel" class="analysis-panel" hidden>
       <h2>Résultats de l'analyse</h2>
@@ -77,24 +86,52 @@
     let currentBitmap = null;
     const drawingUtils = new DrawingUtils(ctx);
 
+    // Debug counters and UI
+    const debugPanel = document.getElementById('debugPanel');
+    const debugCountsNode = document.getElementById('debugCounts');
+    const debugErrorsNode = document.getElementById('debugErrors');
+    const debugDetailsNode = document.getElementById('debugDetails');
+    const debugCounts = { segments: 0, angles: 0, points: 0, errors: [], last: [] };
+    const updateDebug = () => {
+      if (!debugPanel) return;
+      debugPanel.style.display = 'block';
+      debugCountsNode.innerText = `Segments: ${debugCounts.segments} · Angles: ${debugCounts.angles} · Points: ${debugCounts.points} · Erreurs: ${debugCounts.errors.length}`;
+      debugErrorsNode.innerText = debugCounts.errors.slice(-10).join('\n');
+      if (debugDetailsNode) {
+        debugDetailsNode.innerText = debugCounts.last.slice(-12).join('\n');
+      }
+    };
+    window.addEventListener('error', (e) => {
+      debugCounts.errors.push(e.message || String(e));
+      updateDebug();
+    });
+
     const showStatus = (text, status = "ready") => {
       statusDiv.innerText = text;
       statusDiv.className = `status ${status}`;
     };
 
+    let canvasCssWidth = 0, canvasCssHeight = 0;
     const resizeCanvas = (width, height) => {
-      canvas.width = width;
-      canvas.height = height;
+      canvasCssWidth = Math.round(width);
+      canvasCssHeight = Math.round(height);
+      const dpr = window.devicePixelRatio || 1;
+      canvas.style.width = canvasCssWidth + 'px';
+      canvas.style.height = canvasCssHeight + 'px';
+      canvas.width = Math.round(canvasCssWidth * dpr);
+      canvas.height = Math.round(canvasCssHeight * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     };
 
     const drawLabel = (point, text, color) => {
-      ctx.font = "18px Inter, system-ui, sans-serif";
-      ctx.textBaseline = "bottom";
-      ctx.lineWidth = 4;
-      ctx.strokeStyle = "rgba(0,0,0,0.7)";
+      ctx.font = "bold 20px 'Segoe UI', system-ui, sans-serif";
+      ctx.textBaseline = "middle";
+      ctx.textAlign = "center";
+      ctx.lineWidth = 6;
+      ctx.strokeStyle = "rgba(0,0,0,0.8)";
       ctx.fillStyle = color;
-      ctx.strokeText(text, point.x + 10, point.y - 10);
-      ctx.fillText(text, point.x + 10, point.y - 10);
+      ctx.strokeText(text, point.x, point.y);
+      ctx.fillText(text, point.x, point.y);
     };
 
     const computeAngle = (a, b, c) => {
@@ -107,12 +144,72 @@
     };
 
     const drawSegment = (a, b, color, width = 5) => {
-      ctx.strokeStyle = color;
-      ctx.lineWidth = width;
-      ctx.beginPath();
-      ctx.moveTo(a.x, a.y);
-      ctx.lineTo(b.x, b.y);
-      ctx.stroke();
+      try {
+        if (!isValidPoint(a) || !isValidPoint(b)) return;
+        ctx.strokeStyle = color;
+        ctx.lineWidth = width;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.shadowColor = color;
+        ctx.shadowBlur = 14;
+        ctx.beginPath();
+        ctx.moveTo(a.x, a.y);
+        ctx.lineTo(b.x, b.y);
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+        debugCounts.segments += 1;
+        try { debugCounts.last.push(`Segment: ${a.x.toFixed(1)},${a.y.toFixed(1)} -> ${b.x.toFixed(1)},${b.y.toFixed(1)} (${color})`); } catch(e){}
+        updateDebug();
+      } catch (err) {
+        console.error('drawSegment error', err);
+        debugCounts.errors.push(String(err));
+        updateDebug();
+      }
+    };
+
+    const isValidPoint = (p) => p && Number.isFinite(p.x) && Number.isFinite(p.y);
+
+    const drawAngleMarker = (a, b, c, color, label) => {
+      try {
+        if (!isValidPoint(a) || !isValidPoint(b) || !isValidPoint(c)) return;
+        const ab = { x: a.x - b.x, y: a.y - b.y };
+        const cb = { x: c.x - b.x, y: c.y - b.y };
+        const start = Math.atan2(ab.y, ab.x);
+        const end = Math.atan2(cb.y, cb.x);
+        let diff = end - start;
+        while (diff <= -Math.PI) diff += 2 * Math.PI;
+        while (diff > Math.PI) diff -= 2 * Math.PI;
+        const radius = Math.min(65, (Math.hypot(ab.x, ab.y) + Math.hypot(cb.x, cb.y)) * 0.25);
+        ctx.fillStyle = `rgba(255, 0, 0, 0.32)`;
+        ctx.beginPath();
+        ctx.moveTo(b.x, b.y);
+        ctx.arc(b.x, b.y, radius, start, start + diff, diff < 0);
+        ctx.lineTo(b.x, b.y);
+        ctx.fill();
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 10;
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+        ctx.beginPath();
+        ctx.shadowColor = color;
+        ctx.shadowBlur = 14;
+        ctx.arc(b.x, b.y, radius, start, start + diff, diff < 0);
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+        debugCounts.angles += 1;
+        try { debugCounts.last.push(`Angle@${b.x.toFixed(1)},${b.y.toFixed(1)} r=${radius.toFixed(1)} ${label||''}`); } catch(e){}
+        updateDebug();
+        if (label) {
+          const midAngle = start + diff / 2;
+          const labelX = b.x + Math.cos(midAngle) * (radius + 22);
+          const labelY = b.y + Math.sin(midAngle) * (radius + 22);
+          drawLabel({ x: labelX, y: labelY }, label, color);
+        }
+      } catch (err) {
+        console.error('drawAngleMarker error', err);
+        debugCounts.errors.push(String(err));
+        updateDebug();
+      }
     };
 
     const computeSlope = (a, b) => {
@@ -129,9 +226,9 @@
           },
           runningMode: "IMAGE",
           numPoses: 1,
-          minPoseDetectionConfidence: 0.3,
-          minPosePresenceConfidence: 0.3,
-          minTrackingConfidence: 0.3
+          minPoseDetectionConfidence: 0.5,
+          minPosePresenceConfidence: 0.5,
+          minTrackingConfidence: 0.5
         });
         showStatus("✅ IA prête. Importez une photo depuis votre galerie.", "ready");
         selectPhotoButton.disabled = false;
@@ -145,10 +242,23 @@
       if (!poseLandmarker) return;
       showStatus("⏳ Photo envoyée à l'IA pour analyse...", "ready");
 
-      const results = poseLandmarker.detect(imageBitmap);
-      resizeCanvas(imageBitmap.width, imageBitmap.height);
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(imageBitmap, 0, 0, canvas.width, canvas.height);
+      let processedBitmap = imageBitmap;
+      if (imageBitmap.width < 800 || imageBitmap.height < 600) {
+        const scale = Math.max(800 / imageBitmap.width, 600 / imageBitmap.height);
+        const newWidth = Math.round(imageBitmap.width * scale);
+        const newHeight = Math.round(imageBitmap.height * scale);
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = newWidth;
+        tempCanvas.height = newHeight;
+        const tempCtx = tempCanvas.getContext('2d');
+        tempCtx.drawImage(imageBitmap, 0, 0, newWidth, newHeight);
+        processedBitmap = await createImageBitmap(tempCanvas);
+      }
+
+      const results = poseLandmarker.detect(processedBitmap);
+      resizeCanvas(processedBitmap.width, processedBitmap.height);
+      ctx.clearRect(0, 0, canvasCssWidth, canvasCssHeight);
+      ctx.drawImage(processedBitmap, 0, 0, canvasCssWidth, canvasCssHeight);
 
       if (!results?.landmarks?.length) {
         showStatus("⚠️ Aucune posture reconnue. Essayez une autre photo.", "alert");
@@ -159,7 +269,12 @@
       }
 
       const landmarks = results.landmarks[0];
-      const point = (index) => landmarks[index] || { x: 0, y: 0 };
+      const scaleX = processedBitmap.width;
+      const scaleY = processedBitmap.height;
+      const point = (index) => {
+        const p = landmarks[index];
+        return p ? { x: p.x * scaleX, y: p.y * scaleY } : { x: 0, y: 0 };
+      };
       const leftShoulder = point(11);
       const rightShoulder = point(12);
       const leftElbow = point(13);
@@ -192,27 +307,41 @@
       const spineOffset = Math.abs(shoulderCenter.x - hipCenter.x);
       const headTilt = Math.abs(leftEye.y - rightEye.y);
 
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(imageBitmap, 0, 0, canvas.width, canvas.height);
-      drawSegment(leftShoulder, rightShoulder, "#f1c40f", 4);
-      drawSegment(leftHip, rightHip, "#f1c40f", 4);
-      drawSegment(leftShoulder, leftElbow, "#2ecc71", 4);
-      drawSegment(leftElbow, leftWrist, "#2ecc71", 4);
-      drawSegment(rightShoulder, rightElbow, "#2ecc71", 4);
-      drawSegment(rightElbow, rightWrist, "#2ecc71", 4);
-      drawSegment(leftHip, leftKnee, "#3498db", 4);
-      drawSegment(leftKnee, leftAnkle, "#3498db", 4);
-      drawSegment(rightHip, rightKnee, "#3498db", 4);
-      drawSegment(rightKnee, rightAnkle, "#3498db", 4);
-      drawSegment(shoulderCenter, hipCenter, spineOffset > 0.18 ? "#e74c3c" : "#2ecc71", 4);
-      drawSegment(headCenter, shoulderCenter, headTilt > 0.04 ? "#e74c3c" : "#3498db", 4);
+      ctx.clearRect(0, 0, canvasCssWidth, canvasCssHeight);
+      ctx.drawImage(processedBitmap, 0, 0, canvasCssWidth, canvasCssHeight);
+      
+      const segmentColor = "#39FF14"; /* neon green */
+      const segmentWidth = 12;
+      drawSegment(leftShoulder, rightShoulder, segmentColor, segmentWidth);
+      drawSegment(leftHip, rightHip, segmentColor, segmentWidth);
+      drawSegment(leftShoulder, leftElbow, segmentColor, segmentWidth);
+      drawSegment(leftElbow, leftWrist, segmentColor, segmentWidth);
+      drawSegment(rightShoulder, rightElbow, segmentColor, segmentWidth);
+      drawSegment(rightElbow, rightWrist, segmentColor, segmentWidth);
+      drawSegment(leftHip, leftKnee, segmentColor, segmentWidth);
+      drawSegment(leftKnee, leftAnkle, segmentColor, segmentWidth);
+      drawSegment(rightHip, rightKnee, segmentColor, segmentWidth);
+      drawSegment(rightKnee, rightAnkle, segmentColor, segmentWidth);
+      drawSegment(shoulderCenter, hipCenter, segmentColor, segmentWidth);
+      drawSegment(headCenter, shoulderCenter, segmentColor, segmentWidth);
 
-      drawingUtils.drawLandmarks(landmarks, { color: "#ffffff", radius: 4 });
-      drawLabel(leftKnee, `${Math.round(leftKneeAngle)}°`, "#2ecc71");
-      drawLabel(rightKnee, `${Math.round(rightKneeAngle)}°`, "#2ecc71");
-      drawLabel(leftElbow, `${Math.round(leftElbowAngle)}°`, "#f1c40f");
-      drawLabel(rightElbow, `${Math.round(rightElbowAngle)}°`, "#f1c40f");
-      drawLabel(shoulderCenter, `${Math.round(trunkAngle)}°`, spineOffset > 0.18 ? "#e74c3c" : "#3498db");
+      ctx.fillStyle = "#ffffff";
+      [leftShoulder, rightShoulder, leftElbow, rightElbow, leftWrist, rightWrist, leftHip, rightHip, leftKnee, rightKnee, leftAnkle, rightAnkle, nose, leftEye, rightEye].forEach(pt => {
+        if (isValidPoint(pt)) {
+          ctx.beginPath();
+          ctx.arc(pt.x, pt.y, 10, 0, Math.PI * 2);
+          ctx.fill();
+          debugCounts.points += 1;
+          updateDebug();
+        }
+      });
+
+      drawAngleMarker(leftHip, leftKnee, leftAnkle, "#FF0000", `${Math.round(leftKneeAngle)}°`);
+      drawAngleMarker(rightHip, rightKnee, rightAnkle, "#FF0000", `${Math.round(rightKneeAngle)}°`);
+      drawAngleMarker(leftShoulder, leftElbow, leftWrist, "#FF0000", `${Math.round(leftElbowAngle)}°`);
+      drawAngleMarker(rightShoulder, rightElbow, rightWrist, "#FF0000", `${Math.round(rightElbowAngle)}°`);
+      drawAngleMarker(shoulderCenter, hipCenter, leftKnee, "#FF0000", `${Math.round(trunkAngle)}°`);
+      drawAngleMarker(leftShoulder, shoulderCenter, rightShoulder, "#FF0000", "Épaules");
 
       const postureNotes = [];
       const summary = [];
@@ -278,7 +407,7 @@
     fileInput.addEventListener("change", handleFileSelect);
 
     resetPhotoButton.addEventListener("click", () => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.clearRect(0, 0, canvasCssWidth || canvas.width, canvasCssHeight || canvas.height);
       analysisPanel.hidden = true;
       analysisSegments.innerHTML = "";
       fileInput.value = "";
