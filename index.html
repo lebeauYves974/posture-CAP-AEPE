@@ -14,11 +14,11 @@
     html, body { min-height: 100%; }
     body { font-family: -apple-system, system-ui, sans-serif; margin: 0; background: #121212; color: white; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
     .header { padding: 16px 14px; text-align: center; background: #2c3e50; width: 100%; box-shadow: 0 4px 10px rgba(0,0,0,0.3); font-size: 1rem; }
-    .container { position: relative; width: 100%; max-width: 640px; margin-top: 8px; flex-grow: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; }
-    video { width: 100%; height: auto; border-radius: 15px; margin-bottom: 10px; background: black; object-fit: cover; }
-    canvas { width: 100%; height: auto; border-radius: 15px; }
-    .controls { padding: 16px 14px 24px; width: 100%; display: flex; flex-direction: column; align-items: center; background: #1a1a1a; gap: 12px; }
-    button { background: var(--prap-blue); color: white; border: none; padding: 16px 22px; border-radius: 999px; font-size: 1rem; font-weight: bold; cursor: pointer; transition: 0.2s; width: 100%; max-width: 360px; -webkit-tap-highlight-color: transparent; }
+    .container { position: relative; width: 100%; max-width: 640px; margin-top: 8px; flex-grow: 1; display: flex; flex-direction: column; justify-content: flex-start; align-items: center; }
+    video { width: 100%; max-height: 28vh; min-height: 180px; border-radius: 15px; margin-bottom: 10px; background: black; object-fit: cover; }
+    canvas { width: 100%; max-height: 28vh; min-height: 180px; border-radius: 15px; display: none; }
+    .controls { padding: 12px 12px 18px; width: 100%; display: flex; flex-direction: column; align-items: center; background: #1a1a1a; gap: 10px; }
+    button { background: var(--prap-blue); color: white; border: none; padding: 14px 16px; border-radius: 999px; font-size: 0.95rem; font-weight: bold; cursor: pointer; transition: 0.2s; width: 100%; max-width: 320px; -webkit-tap-highlight-color: transparent; }
     button:disabled { background: #555; cursor: wait; }
     @media (max-width: 480px) {
       .header { padding: 14px 12px; font-size: 0.95rem; }
@@ -74,9 +74,10 @@
           delegate: "GPU"
         },
         runningMode: "IMAGE",
-        numPoses: 2,
-        minPoseDetectionConfidence: 0.6,
-        minPosePresenceConfidence: 0.5
+        numPoses: 3,
+        minPoseDetectionConfidence: 0.2,
+        minPosePresenceConfidence: 0.2,
+        minTrackingConfidence: 0.2
       });
       statusDiv.innerText = "✅ IA prête. Activez la caméra.";
       statusDiv.className = "status ready";
@@ -100,6 +101,7 @@
       canvasElement.width = video.videoWidth;
       canvasElement.height = video.videoHeight;
       video.style.display = "block";
+      canvasElement.style.display = "none";
       resetPhotoButton.disabled = true;
       statusDiv.innerText = "✅ Caméra prête. Cliquez sur PRENDRE LA PHOTO.";
       statusDiv.className = "status ready";
@@ -122,6 +124,7 @@
 
 
     try {
+      canvasCtx.drawImage(video, 0, 0, canvasElement.width, canvasElement.height);
       const bitmap = await createImageBitmap(canvasElement);
       const results = poseLandmarker.detect(bitmap);
 
@@ -129,18 +132,41 @@
         drawingUtils.drawConnectors(results.landmarks, PoseLandmarker.POSE_CONNECTIONS, { color: '#00FF00', lineWidth: 4 });
         drawingUtils.drawLandmarks(results.landmarks, { radius: 3, color: '#FF0000' });
 
-        const [shoulder, hip, knee] = [results.landmarks[3], results.landmarks[4], results.landmarks[5]];
-        const spineLean = Math.abs(shoulder.x - hip.x);
-        const legFlexion = Math.abs(hip.y - knee.y);
+        const leftShoulder = results.landmarks[11];
+        const rightShoulder = results.landmarks[12];
+        const leftHip = results.landmarks[23];
+        const rightHip = results.landmarks[24];
+        const leftKnee = results.landmarks[25];
+        const rightKnee = results.landmarks[26];
+        const leftAnkle = results.landmarks[27];
+        const rightAnkle = results.landmarks[28];
 
-        if (spineLean > 0.18) {
-          statusDiv.innerText = "⚠️ Dos courbé ! Rapprochez l'enfant du corps (PSPEE 1)";
+        const averagePoint = (a, b) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+        const shoulders = averagePoint(leftShoulder, rightShoulder);
+        const hips = averagePoint(leftHip, rightHip);
+        const legAngle = (a, b, c) => {
+          const ab = { x: a.x - b.x, y: a.y - b.y };
+          const cb = { x: c.x - b.x, y: c.y - b.y };
+          const dot = ab.x * cb.x + ab.y * cb.y;
+          const mag = Math.hypot(ab.x, ab.y) * Math.hypot(cb.x, cb.y);
+          return mag === 0 ? 180 : Math.acos(Math.max(-1, Math.min(1, dot / mag))) * (180 / Math.PI);
+        };
+        const leftKneeAngle = legAngle(leftHip, leftKnee, leftAnkle);
+        const rightKneeAngle = legAngle(rightHip, rightKnee, rightAnkle);
+        const meanKnee = (leftKneeAngle + rightKneeAngle) / 2;
+        const spineLean = Math.abs(shoulders.x - hips.x);
+
+        if (spineLean > 0.22) {
+          statusDiv.innerText = "⚠️ Dos courbé ou penché. Approchez l'enfant du corps.";
           statusDiv.className = "status alert";
-        } else if (legFlexion < 0.1) {
-          statusDiv.innerText = "❌ Pliez les jambes ! Utilisez vos cuisses (PSPEE 4)";
+        } else if (meanKnee > 165) {
+          statusDiv.innerText = "❌ Jambes trop tendues. Fléchissez un peu les genoux.";
+          statusDiv.className = "status alert";
+        } else if (meanKnee < 90) {
+          statusDiv.innerText = "❌ Genoux trop pliés. Redressez légèrement les jambes.";
           statusDiv.className = "status alert";
         } else {
-          statusDiv.innerText = "✅ Position ALM sécurisée (Dos droit et jambes fléchies)";
+          statusDiv.innerText = "✅ Position ALM stable. Dos droit avec genoux fléchis.";
           statusDiv.className = "status valid";
         }
         resetPhotoButton.disabled = false;
