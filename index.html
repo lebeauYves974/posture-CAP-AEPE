@@ -113,8 +113,13 @@
 
     let canvasCssWidth = 0, canvasCssHeight = 0;
     const resizeCanvas = (width, height) => {
-      canvasCssWidth = Math.round(width);
-      canvasCssHeight = Math.round(height);
+      // Fit the canvas to the image-wrapper container while preserving aspect ratio
+      const wrapper = document.querySelector('.image-wrapper');
+      const containerW = (wrapper && wrapper.clientWidth) || width;
+      const displayWidth = Math.min(width, containerW);
+      const displayHeight = Math.round(displayWidth * (height / width));
+      canvasCssWidth = Math.round(displayWidth);
+      canvasCssHeight = Math.round(displayHeight);
       const dpr = window.devicePixelRatio || 1;
       canvas.style.width = canvasCssWidth + 'px';
       canvas.style.height = canvasCssHeight + 'px';
@@ -269,6 +274,23 @@
       }
 
       const landmarks = results.landmarks[0];
+      // Push some normalized + pixel coords for key landmarks to debug details
+      try {
+        const pushCoord = (idx, name) => {
+          const p = landmarks[idx];
+          if (!p) return;
+          const px = (p.x * processedBitmap.width).toFixed(1);
+          const py = (p.y * processedBitmap.height).toFixed(1);
+          debugCounts.last.push(`${name}: norm(${p.x.toFixed(3)},${p.y.toFixed(3)}) → px(${px},${py})`);
+        };
+        pushCoord(11, 'leftShoulder');
+        pushCoord(12, 'rightShoulder');
+        pushCoord(23, 'leftHip');
+        pushCoord(24, 'rightHip');
+        pushCoord(25, 'leftKnee');
+        pushCoord(26, 'rightKnee');
+        updateDebug();
+      } catch (e) { debugCounts.errors.push(String(e)); updateDebug(); }
       const scaleX = processedBitmap.width;
       const scaleY = processedBitmap.height;
       const point = (index) => {
