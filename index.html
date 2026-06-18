@@ -279,9 +279,11 @@
         debugCounts.last.push(`--- full landmarks dump (${landmarks.length}) ---`);
         landmarks.forEach((p, i) => {
           if (!p) return;
-          const px = (p.x * processedBitmap.width).toFixed(1);
-          const py = (p.y * processedBitmap.height).toFixed(1);
-          debugCounts.last.push(`L${i}: norm(${p.x.toFixed(4)},${p.y.toFixed(4)}) → px(${px},${py})`);
+          const nativePx = (p.x * processedBitmap.width).toFixed(1);
+          const nativePy = (p.y * processedBitmap.height).toFixed(1);
+          const dispPx = (p.x * canvasCssWidth).toFixed(1);
+          const dispPy = (p.y * canvasCssHeight).toFixed(1);
+          debugCounts.last.push(`L${i}: norm(${p.x.toFixed(4)},${p.y.toFixed(4)}) → native(${nativePx},${nativePy}) display(${dispPx},${dispPy})`);
         });
         // Keep debug history bounded
         if (debugCounts.last.length > 400) debugCounts.last = debugCounts.last.slice(-200);
@@ -290,8 +292,8 @@
         debugCounts.errors.push(String(e));
         updateDebug();
       }
-      const scaleX = processedBitmap.width;
-      const scaleY = processedBitmap.height;
+      const scaleX = canvasCssWidth || processedBitmap.width;
+      const scaleY = canvasCssHeight || processedBitmap.height;
       const point = (index) => {
         const p = landmarks[index];
         return p ? { x: p.x * scaleX, y: p.y * scaleY } : { x: 0, y: 0 };
