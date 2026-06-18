@@ -274,23 +274,22 @@
       }
 
       const landmarks = results.landmarks[0];
-      // Push some normalized + pixel coords for key landmarks to debug details
+      // Dump full set of landmarks (normalized + pixel) for debugging
       try {
-        const pushCoord = (idx, name) => {
-          const p = landmarks[idx];
+        debugCounts.last.push(`--- full landmarks dump (${landmarks.length}) ---`);
+        landmarks.forEach((p, i) => {
           if (!p) return;
           const px = (p.x * processedBitmap.width).toFixed(1);
           const py = (p.y * processedBitmap.height).toFixed(1);
-          debugCounts.last.push(`${name}: norm(${p.x.toFixed(3)},${p.y.toFixed(3)}) → px(${px},${py})`);
-        };
-        pushCoord(11, 'leftShoulder');
-        pushCoord(12, 'rightShoulder');
-        pushCoord(23, 'leftHip');
-        pushCoord(24, 'rightHip');
-        pushCoord(25, 'leftKnee');
-        pushCoord(26, 'rightKnee');
+          debugCounts.last.push(`L${i}: norm(${p.x.toFixed(4)},${p.y.toFixed(4)}) → px(${px},${py})`);
+        });
+        // Keep debug history bounded
+        if (debugCounts.last.length > 400) debugCounts.last = debugCounts.last.slice(-200);
         updateDebug();
-      } catch (e) { debugCounts.errors.push(String(e)); updateDebug(); }
+      } catch (e) {
+        debugCounts.errors.push(String(e));
+        updateDebug();
+      }
       const scaleX = processedBitmap.width;
       const scaleY = processedBitmap.height;
       const point = (index) => {
